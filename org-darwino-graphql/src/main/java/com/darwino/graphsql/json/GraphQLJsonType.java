@@ -25,8 +25,6 @@ package com.darwino.graphsql.json;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.darwino.commons.json.JsonException;
-
 import graphql.schema.GraphQLObjectType;
 
 
@@ -42,17 +40,21 @@ public class GraphQLJsonType {
 	private List<JsonProvider> providers = new ArrayList<JsonProvider>();
 	
 	public GraphQLJsonType(JsonProvider...providers) {
-		this.providers.add(new JsonStandardFields());
+		initDefaultProviders(this.providers);
 		for(int i=0; i<providers.length; i++) {
 			this.providers.add(providers[i]);
 		}
+	}
+	
+	protected void initDefaultProviders(List<JsonProvider> providers) {
+		providers.add(new JsonStandardFields());
 	}
 	
 	public List<JsonProvider> getProviders() {
 		return providers;
 	}
 	
-	public GraphQLObjectType createType() throws JsonException {
+	public GraphQLObjectType createType() {
 		GraphQLObjectType.Builder builder = GraphQLObjectType.newObject()
 			.name(TYPE)
 		;

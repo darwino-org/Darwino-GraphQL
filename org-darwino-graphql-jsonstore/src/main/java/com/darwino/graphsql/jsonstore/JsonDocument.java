@@ -108,14 +108,14 @@ public class JsonDocument extends JsonProvider {
 					return null;
 				}
 				
-				String database = (String)environment.getArgument("database");
+				String database = getStringParameter(environment,"database");
 				if(StringUtil.isEmpty(database)) {
 					database = ctx.getDatabase();
 					if(StringUtil.isEmpty(database)) {
 						return null;
 					}
 				}
-				String store = (String)environment.getArgument("store");
+				String store = getStringParameter(environment,"store");
 				if(StringUtil.isEmpty(store)) {
 					store = ctx.getStore();
 					if(StringUtil.isEmpty(store)) {
@@ -125,7 +125,7 @@ public class JsonDocument extends JsonProvider {
 
 				Document doc = null;
 				
-				String unid = (String)environment.getArgument("unid");
+				String unid = getStringParameter(environment,"unid");
 				if(StringUtil.isNotEmpty(unid)) {
 					doc = session.getDatabase(database).getStore(store).loadDocument(unid);
 				} else {

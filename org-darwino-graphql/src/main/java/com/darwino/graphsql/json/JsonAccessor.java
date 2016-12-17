@@ -24,9 +24,6 @@ package com.darwino.graphsql.json;
 
 import com.darwino.commons.json.JsonException;
 import com.darwino.commons.json.jsonpath.JsonPath;
-import com.darwino.commons.json.jsonpath.JsonPathFactory;
-
-import graphql.schema.DataFetchingEnvironment;
 
 /**
  * Add access to JSON documents coming from the Darwino JSON store.
@@ -46,18 +43,4 @@ public abstract class JsonAccessor {
 	}
 	
 	public abstract Object path(JsonPath path) throws JsonException;
-	
-	protected Object evaluateParameter(DataFetchingEnvironment environment, Object value) throws JsonException {
-		if(value instanceof String) {
-			String s = (String)value;
-			if(s.startsWith("$.")) {
-				if(parent==null) {
-					throw new JsonException(null,"The node does not have a parent");
-				}
-				JsonPath p = JsonPathFactory.get(s);
-				return parent.path(p);
-			}
-		}
-		return value;
-	}
 }

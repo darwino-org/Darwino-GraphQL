@@ -22,6 +22,10 @@
 
 package com.darwino.graphsql.json;
 
+import com.darwino.commons.json.JsonException;
+import com.darwino.commons.json.jsonpath.JsonPath;
+import com.darwino.commons.json.jsonpath.JsonPathFactory;
+
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
 
@@ -39,4 +43,23 @@ public abstract class JsonDataFetcher implements DataFetcher {
 	
     @Override
 	public abstract JsonAccessor get(DataFetchingEnvironment environment);
+    
+	
+	protected String getStringParameter(DataFetchingEnvironment environment, String argName) throws JsonException {
+		return (String)getParameter(environment, argName);
+	}
+	private Object getParameter(DataFetchingEnvironment environment, String argName) throws JsonException {
+		Object value = environment.getArgument(argName);
+		if(value instanceof String) {
+			String s = (String)value;
+			if(s.startsWith("$.")) {
+				Object source = environment.getSource();
+				if(source instanceof JsonAccessor) {
+					JsonPath p = JsonPathFactory.get(s);
+					return ((JsonAccessor)source).path(p);
+				}
+			}
+		}
+		return value;
+	}
 }
