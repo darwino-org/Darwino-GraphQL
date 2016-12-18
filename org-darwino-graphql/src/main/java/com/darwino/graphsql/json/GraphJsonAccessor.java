@@ -22,44 +22,44 @@
 
 package com.darwino.graphsql.json;
 
+import java.util.List;
+
 import com.darwino.commons.json.JsonException;
 import com.darwino.commons.json.jsonpath.JsonPath;
-import com.darwino.commons.json.jsonpath.JsonPathFactory;
-
-import graphql.schema.DataFetcher;
-import graphql.schema.DataFetchingEnvironment;
 
 /**
- * Base class for a data fetcher.
- * 
- * This ensures that the returned type is a JsonAccessor.
+ * Add access to JSON documents coming from the Darwino JSON store.
  * 
  * @author Philippe Riand
  */
-public abstract class JsonDataFetcher implements DataFetcher {
+public abstract class GraphJsonAccessor {
 	
-	public JsonDataFetcher() {
-	}
-	
-    @Override
-	public abstract JsonAccessor get(DataFetchingEnvironment environment);
-    
-	
-	protected String getStringParameter(DataFetchingEnvironment environment, String argName) throws JsonException {
-		return (String)getParameter(environment, argName);
-	}
-	private Object getParameter(DataFetchingEnvironment environment, String argName) throws JsonException {
-		Object value = environment.getArgument(argName);
-		if(value instanceof String) {
-			String s = (String)value;
-			if(s.startsWith("$.")) {
-				Object source = environment.getSource();
-				if(source instanceof JsonAccessor) {
-					JsonPath p = JsonPathFactory.get(s);
-					return ((JsonAccessor)source).path(p);
-				}
-			}
+	public static final class Empty extends GraphJsonAccessor {
+		public Empty(GraphJsonAccessor parent) {
+			super(parent);
 		}
-		return value;
+		@Override
+		public Object readValue(JsonPath path) throws JsonException {
+			return null;
+		}
+		@Override
+		public List<?> readList(JsonPath path) throws JsonException {
+			return null;
+		}
+	};
+
+	private GraphJsonAccessor parent;
+	
+	public GraphJsonAccessor(Object parent) {
+		if(parent instanceof GraphJsonAccessor) {
+			this.parent = (GraphJsonAccessor)parent;
+		}
 	}
+	
+	public GraphJsonAccessor getParent() {
+		return parent;
+	}
+	
+	public abstract Object readValue(JsonPath path) throws JsonException;
+	public abstract List<?> readList(JsonPath path) throws JsonException;
 }

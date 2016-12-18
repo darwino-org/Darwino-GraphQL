@@ -24,15 +24,16 @@ package com.darwino.graphsql.jsonstore;
 
 import static graphql.Scalars.GraphQLString;
 
-import java.util.Map;
+import java.util.List;
 
 import com.darwino.commons.json.JsonException;
 import com.darwino.commons.json.jsonpath.JsonPath;
 import com.darwino.commons.util.StringUtil;
-import com.darwino.graphsql.json.GraphQLJsonType;
-import com.darwino.graphsql.json.JsonAccessor;
-import com.darwino.graphsql.json.JsonDataFetcher;
-import com.darwino.graphsql.json.JsonProvider;
+import com.darwino.graphsql.GraphContext;
+import com.darwino.graphsql.json.GraphJsonObjectType;
+import com.darwino.graphsql.json.GraphJsonAccessor;
+import com.darwino.graphsql.json.GraphJsonDataFetcher;
+import com.darwino.graphsql.json.GraphJsonFieldProvider;
 import com.darwino.jsonstore.Document;
 import com.darwino.jsonstore.Session;
 
@@ -47,9 +48,9 @@ import graphql.schema.GraphQLTypeReference;
  * 
  * @author Philippe Riand
  */
-public class JsonDocument extends JsonProvider {
+public class GraphJsonDocument extends GraphJsonFieldProvider {
 
-	public static class DocumentAccessor extends JsonAccessor {
+	public static class DocumentAccessor extends GraphJsonAccessor {
 		
 		private Document document;
 		
@@ -58,8 +59,12 @@ public class JsonDocument extends JsonProvider {
 			this.document = document;
 		}
 		@Override
-		public Object path(JsonPath path) throws JsonException {
-			return path.read(document.getJson());
+		public Object readValue(JsonPath path) throws JsonException {
+			return path.readValue(document.getJson());
+		}
+		@Override
+		public List<?> readList(JsonPath path) throws JsonException {
+			return path.readAsList(document.getJson());
 		}
 	}
 	
@@ -92,13 +97,13 @@ public class JsonDocument extends JsonProvider {
 		}
 	}
 
-	public static class DocumentFecther extends JsonDataFetcher {
+	public static class DocumentFecther extends GraphJsonDataFetcher {
 		public DocumentFecther() {
 		}
 		@Override
 		public DocumentAccessor get(DataFetchingEnvironment environment) {
 			try {
-				Context ctx = (Context)((Map<?,?>)environment.getContext()).get(Context.class);
+				Context ctx = (Context)((GraphContext)environment.getContext()).get(Context.class);
 				if(ctx==null) {
 					return null;
 				}
@@ -168,7 +173,7 @@ public class JsonDocument extends JsonProvider {
 					.argument(storeArgument)
 					.argument(unidArgument)
 					.argument(idArgument)
-					.type(new GraphQLTypeReference(GraphQLJsonType.TYPE))
+					.type(new GraphQLTypeReference(GraphJsonObjectType.TYPE))
 					.dataFetcher(documentFecther)
 			)
 		;

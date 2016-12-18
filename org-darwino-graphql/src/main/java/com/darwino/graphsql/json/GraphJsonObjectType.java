@@ -22,25 +22,47 @@
 
 package com.darwino.graphsql.json;
 
-import com.darwino.commons.json.JsonException;
-import com.darwino.commons.json.jsonpath.JsonPath;
+import java.util.ArrayList;
+import java.util.List;
+
+import graphql.schema.GraphQLObjectType;
+
 
 /**
- * Add access to JSON documents coming from the Darwino JSON store.
+ * JSON GraphQL data type.
  * 
  * @author Philippe Riand
  */
-public abstract class JsonAccessor {
-
-	private JsonAccessor parent;
+public class GraphJsonObjectType {
 	
-	public JsonAccessor(Object parent) {
-		this.parent = JsonAccessorFactory.adapter(parent);
+	public static final String TYPE = "json";
+	
+	private List<GraphJsonFieldProvider> providers = new ArrayList<GraphJsonFieldProvider>();
+	
+	public GraphJsonObjectType(GraphJsonFieldProvider...providers) {
+		initDefaultProviders(this.providers);
+		for(int i=0; i<providers.length; i++) {
+			this.providers.add(providers[i]);
+		}
 	}
 	
-	public JsonAccessor getParent() {
-		return parent;
+	protected void initDefaultProviders(List<GraphJsonFieldProvider> providers) {
+		providers.add(new GraphJsonStandardFieldProvider());
 	}
 	
-	public abstract Object path(JsonPath path) throws JsonException;
+	public List<GraphJsonFieldProvider> getProviders() {
+		return providers;
+	}
+	
+	public GraphQLObjectType createType() {
+		GraphQLObjectType.Builder builder = GraphQLObjectType.newObject()
+			.name(TYPE)
+		;
+		
+		for(GraphJsonFieldProvider p: providers) {
+			p.addJsonFields(builder);
+		}
+		
+		return builder.build();
+	}
 }

@@ -27,13 +27,18 @@ import static graphql.Scalars.GraphQLFloat;
 import static graphql.Scalars.GraphQLString;
 import static graphql.schema.GraphQLFieldDefinition.newFieldDefinition;
 
+import java.util.List;
+
+import com.darwino.commons.json.JsonException;
 import com.darwino.commons.json.JsonUtil;
 import com.darwino.commons.json.jsonpath.JsonPath;
 import com.darwino.commons.json.jsonpath.JsonPathFactory;
 
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
+import graphql.schema.GraphQLList;
 import graphql.schema.GraphQLObjectType;
+import graphql.schema.GraphQLTypeReference;
 
 
 /**
@@ -41,9 +46,9 @@ import graphql.schema.GraphQLObjectType;
  * 
  * @author Philippe Riand
  */
-public class JsonStandardFields extends JsonProvider {
+public class GraphJsonStandardFieldProvider extends GraphJsonFieldProvider {
 	
-	public JsonStandardFields() {
+	public GraphJsonStandardFieldProvider() {
 	}
 
 	@Override
@@ -65,27 +70,34 @@ public class JsonStandardFields extends JsonProvider {
 					.argument(pathArgument)
 					.type(GraphQLString)
 					.dataFetcher(new JsonValueFecther(JsonUtil.TYPE_STRING)))
-			;
+			.field(newFieldDefinition()
+					.name("object")
+					.argument(pathArgument)
+					.type(new GraphQLTypeReference(GraphJsonObjectType.TYPE))
+					.dataFetcher(new JsonValueFecther(JsonUtil.TYPE_OBJECT)))
 			
-//			// Arrays
-//			.field(newFieldDefinition()
-//					.name("booleanArray")
-//					.argument(pathArgument)
-//					.argument(nameArgument)
-//					.type(new GraphQLList(GraphQLBoolean))
-//					.dataFetcher(booleanArrayFetcher))
-//			.field(newFieldDefinition()
-//					.name("numberArray")
-//					.argument(pathArgument)
-//					.argument(nameArgument)
-//					.type(new GraphQLList(GraphQLFloat))
-//					.dataFetcher(numberArrayFetcher))
-//			.field(newFieldDefinition()
-//					.name("stringArray")
-//					.argument(pathArgument)
-//					.argument(nameArgument)
-//					.type(new GraphQLList(GraphQLString))
-//					.dataFetcher(stringArrayFetcher));
+			// Arrays
+			.field(newFieldDefinition()
+					.name("booleanArray")
+					.argument(pathArgument)
+					.type(new GraphQLList(GraphQLBoolean))
+					.dataFetcher(new JsonArrayFecther(JsonUtil.TYPE_BOOLEAN)))
+			.field(newFieldDefinition()
+					.name("numberArray")
+					.argument(pathArgument)
+					.type(new GraphQLList(GraphQLFloat))
+					.dataFetcher(new JsonArrayFecther(JsonUtil.TYPE_NUMBER)))
+			.field(newFieldDefinition()
+					.name("stringArray")
+					.argument(pathArgument)
+					.type(new GraphQLList(GraphQLString))
+					.dataFetcher(new JsonArrayFecther(JsonUtil.TYPE_STRING)))
+			.field(newFieldDefinition()
+					.name("objectArray")
+					.argument(pathArgument)
+					.type(new GraphQLList(new GraphQLTypeReference(GraphJsonObjectType.TYPE)))
+					.dataFetcher(new JsonArrayFecther(JsonUtil.TYPE_OBJECT)))
+			;
 	}
 	
 	public static abstract class ValueDataFetcher implements DataFetcher {
@@ -106,9 +118,14 @@ public class JsonStandardFields extends JsonProvider {
 			try {
 				String parent = (String)environment.getArgument("path");
 				JsonPath path = JsonPathFactory.get(parent);
-				JsonAccessor source = (JsonAccessor)environment.getSource();
-				Object o = source.path(path);
-				return JsonUtil.coerceType(getType(), o, null);
+				GraphJsonAccessor source = (GraphJsonAccessor)environment.getSource();
+				Object o = source.readValue(path);
+				if(getType()==JsonUtil.TYPE_OBJECT) {
+					o = new JsonAccessor(source, o);
+				} else {
+					o = JsonUtil.coerceType(getType(), o, null);
+				}
+				return o;
 			} catch(Exception ex) {
 				return null;
 			}
@@ -123,12 +140,40 @@ public class JsonStandardFields extends JsonProvider {
 			try {
 				String parent = (String)environment.getArgument("path");
 				JsonPath path = JsonPathFactory.get(parent);
-				JsonAccessor source = (JsonAccessor)environment.getSource();
-				Object o = source.path(path);
-				return JsonUtil.coerceType(getType(), o, null);
+				GraphJsonAccessor source = (GraphJsonAccessor)environment.getSource();
+				@SuppressWarnings("unchecked")
+				List<Object> items = (List<Object>)source.readList(path);
+				for(int i=0; i<items.size(); i++) {
+					Object o = items.get(i);
+					if(getType()==JsonUtil.TYPE_OBJECT) {
+						o = new JsonAccessor(source, o);
+					} else {
+						o = JsonUtil.coerceType(getType(), o, null);
+					}
+					items.set(i, o);
+				}
+				return items;
 			} catch(Exception ex) {
 				return null;
 			}
+		}
+	}
+
+	public static class JsonAccessor extends GraphJsonAccessor {
+		
+		private Object object;
+		
+		public JsonAccessor(Object parent, Object object) {
+			super(parent);
+			this.object = object;
+		}
+		@Override
+		public Object readValue(JsonPath path) throws JsonException {
+			return path.readValue(object);
+		}
+		@Override
+		public List<?> readList(JsonPath path) throws JsonException {
+			return path.readAsList(object);
 		}
 	}
 }

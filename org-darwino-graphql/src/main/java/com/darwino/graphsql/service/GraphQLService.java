@@ -22,6 +22,7 @@
 
 package com.darwino.graphsql.service;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -33,6 +34,7 @@ import com.darwino.commons.services.HttpService;
 import com.darwino.commons.services.HttpServiceContext;
 import com.darwino.commons.services.HttpServiceError;
 import com.darwino.commons.util.StringUtil;
+import com.darwino.graphsql.GraphContext;
 
 import graphql.ExecutionResult;
 import graphql.GraphQL;
@@ -50,40 +52,44 @@ import graphql.schema.GraphQLSchema;
  */
 public class GraphQLService extends HttpService {
 	
-	private GraphQLSchema schema;	
+	private GraphQLServiceFactory factory;	
 	private boolean schemaJson;
 	
-	public GraphQLService(GraphQLSchema schema, boolean schemaJson) {
-		this.schema = schema;
+	public GraphQLService(GraphQLServiceFactory factory, boolean schemaJson) {
+		this.factory = factory;
 		this.schemaJson = schemaJson;
 	}
 	
 	@Override
 	public void service(HttpServiceContext context) {
-		if(schemaJson) {
-			if(context.isGet()) {
-		    	// TODO...
-		        //query(CharStreams.toString(new InputStreamReader(GraphQLServlet.class.getResourceAsStream("introspectionQuery"))), null, new HashMap<>(), schema, req, resp, context);
-				throw HttpServiceError.errorNotImplemented("Accessing the GraphQL schema is not implemented");
+		try {
+			if(schemaJson) {
+				if(context.isGet()) {
+			    	// TODO...
+			        //query(CharStreams.toString(new InputStreamReader(GraphQLServlet.class.getResourceAsStream("introspectionQuery"))), null, new HashMap<>(), schema, req, resp, context);
+					throw HttpServiceError.errorNotImplemented("Accessing the GraphQL schema is not implemented");
+				} else {
+					throw HttpServiceError.errorUnsupportedMethod(context.getMethod());
+				}
 			} else {
-				throw HttpServiceError.errorUnsupportedMethod(context.getMethod());
+				if(context.isGet()) {
+					processGet(context);
+				} else if(context.isPost()) {
+					processPost(context);
+				} else {
+					throw HttpServiceError.errorUnsupportedMethod(context.getMethod());
+				}
 			}
-		} else {
-			if(context.isGet()) {
-				processGet(context);
-			} else if(context.isPost()) {
-				processPost(context);
-			} else {
-				throw HttpServiceError.errorUnsupportedMethod(context.getMethod());
-			}
+		} catch(JsonException ex) {
+			throw HttpServiceError.error500(ex);
 		}
 	}
 	
-	public GraphQLSchema getSchema() {
-		return schema;
+	public GraphQLServiceFactory getFactory() {
+		return factory;
 	}
 
-	protected void processGet(HttpServiceContext context) {
+	protected void processGet(HttpServiceContext context) throws JsonException {
 		String query = context.getQueryParameterString("query");
 		if(StringUtil.isEmpty(query)) {
 			query = context.getQueryParameterString("q"); // seems supported
@@ -97,23 +103,29 @@ public class GraphQLService extends HttpService {
 			} catch(JsonException ex) {
 				throw HttpServiceError.error500(ex,"Error while parsing the variables parameter");
 			}
-			processRequest(context, getSchema(), query, operationName, variables);
+			processRequest(context, getFactory().getSchema(), query, operationName, variables);
 		}
 	}
 
-	protected void processPost(HttpServiceContext context) {
+	protected void processPost(HttpServiceContext context) throws JsonException {
 		JsonObject ct = (JsonObject)context.getContentAsJson();
 		String query = ct.getString("query");
 		if(StringUtil.isNotEmpty(query)) {
 			String operationName = ct.getString("operationName");
 			Map<String,Object> variables = ct.getObject("variables");
-			processRequest(context, getSchema(), query, operationName, variables);
+			processRequest(context, getFactory().getSchema(), query, operationName, variables);
 		}
 	}
 	
 	
-	protected void processRequest(HttpServiceContext context, GraphQLSchema schema, String query, String operationName, Map<String,Object> variables) {
-		ExecutionResult result = new GraphQL(schema).execute(query,operationName,context,variables);
+	protected void processRequest(HttpServiceContext context, GraphQLSchema schema, String query, String operationName, Map<String,Object> variables) throws JsonException {
+		if(variables==null) {
+			variables = Collections.emptyMap();
+		}
+		
+        GraphContext graphContext = getFactory().createContext();
+        
+		ExecutionResult result = new GraphQL(schema).execute(query,operationName,graphContext,variables);
 		if (result.getErrors().isEmpty()) {
 			JsonObject root = new JsonObject();
 			root.put("data", result.getData());

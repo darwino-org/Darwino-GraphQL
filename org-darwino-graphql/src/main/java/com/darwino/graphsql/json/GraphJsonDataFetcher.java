@@ -22,25 +22,44 @@
 
 package com.darwino.graphsql.json;
 
-import static graphql.Scalars.GraphQLString;
+import com.darwino.commons.json.JsonException;
+import com.darwino.commons.json.jsonpath.JsonPath;
+import com.darwino.commons.json.jsonpath.JsonPathFactory;
 
-import graphql.schema.GraphQLArgument;
-import graphql.schema.GraphQLObjectType;
+import graphql.schema.DataFetcher;
+import graphql.schema.DataFetchingEnvironment;
 
 /**
- * Add access to JSON documents coming from the Darwino JSON store.
+ * Base class for a data fetcher.
+ * 
+ * This ensures that the returned type is a JsonAccessor.
  * 
  * @author Philippe Riand
  */
-public abstract class JsonProvider {
+public abstract class GraphJsonDataFetcher implements DataFetcher {
 	
-	public static GraphQLArgument pathArgument = new GraphQLArgument.Builder()
-			.name("path")
-			.type(GraphQLString)
-			.build();
-	
-	public JsonProvider() {
+	public GraphJsonDataFetcher() {
 	}
 	
-	public abstract void addJsonFields(GraphQLObjectType.Builder builder);
+    @Override
+	public abstract GraphJsonAccessor get(DataFetchingEnvironment environment);
+    
+	
+	protected String getStringParameter(DataFetchingEnvironment environment, String argName) throws JsonException {
+		return (String)getParameter(environment, argName);
+	}
+	private Object getParameter(DataFetchingEnvironment environment, String argName) throws JsonException {
+		Object value = environment.getArgument(argName);
+		if(value instanceof String) {
+			String s = (String)value;
+			if(s.startsWith("$.")) {
+				Object source = environment.getSource();
+				if(source instanceof GraphJsonAccessor) {
+					JsonPath p = JsonPathFactory.get(s);
+					return ((GraphJsonAccessor)source).readValue(p);
+				}
+			}
+		}
+		return value;
+	}
 }

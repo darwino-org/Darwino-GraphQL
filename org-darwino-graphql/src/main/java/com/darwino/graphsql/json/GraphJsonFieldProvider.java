@@ -22,30 +22,25 @@
 
 package com.darwino.graphsql.json;
 
-import java.util.Map;
+import static graphql.Scalars.GraphQLString;
 
-import com.darwino.commons.json.JsonException;
-import com.darwino.commons.json.jsonpath.JsonPath;
+import graphql.schema.GraphQLArgument;
+import graphql.schema.GraphQLObjectType;
 
 /**
- * JSON accessor factory.
+ * Add access to JSON documents coming from the Darwino JSON store.
  * 
  * @author Philippe Riand
  */
-public class JsonAccessorFactory {
-
-	public static JsonAccessor adapter(final Object o) {
-		if(o instanceof JsonAccessor) {
-			return (JsonAccessor)o;
-		}
-		if(o instanceof Map<?, ?>) {
-			return new JsonAccessor(null) {
-				@Override
-				public Object path(JsonPath path) throws JsonException {
-					return path.read(o);
-				}
-			};
-		}
-		return null;
+public abstract class GraphJsonFieldProvider {
+	
+	public static GraphQLArgument pathArgument = new GraphQLArgument.Builder()
+			.name("path")
+			.type(GraphQLString)
+			.build();
+	
+	public GraphJsonFieldProvider() {
 	}
+	
+	public abstract void addJsonFields(GraphQLObjectType.Builder builder);
 }

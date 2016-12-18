@@ -20,49 +20,35 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.darwino.graphsql.json;
+package com.darwino.graphsql;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import graphql.schema.GraphQLObjectType;
-
+import java.util.HashMap;
+import java.util.Map;
 
 /**
- * JSON GraphQL data type.
+ * GraphQL execution context.
+ * 
+ * This is the context that is passed to the execution engine.
  * 
  * @author Philippe Riand
  */
-public class GraphQLJsonType {
+public class GraphContext {
+
+	private Map<Class<?>,Object> contexts = new HashMap<Class<?>,Object>();
 	
-	public static final String TYPE = "json";
-	
-	private List<JsonProvider> providers = new ArrayList<JsonProvider>();
-	
-	public GraphQLJsonType(JsonProvider...providers) {
-		initDefaultProviders(this.providers);
-		for(int i=0; i<providers.length; i++) {
-			this.providers.add(providers[i]);
-		}
+	public GraphContext() {
 	}
 	
-	protected void initDefaultProviders(List<JsonProvider> providers) {
-		providers.add(new JsonStandardFields());
+	public Map<Class<?>,Object> getContexts() {
+		return contexts;
 	}
 	
-	public List<JsonProvider> getProviders() {
-		return providers;
+	public Object get(Class<?> c) {
+		return contexts.get(c);
 	}
 	
-	public GraphQLObjectType createType() {
-		GraphQLObjectType.Builder builder = GraphQLObjectType.newObject()
-			.name(TYPE)
-		;
-		
-		for(JsonProvider p: providers) {
-			p.addJsonFields(builder);
-		}
-		
-		return builder.build();
+	public GraphContext put(Class<?> c, Object context) {
+		contexts.put(c,context);
+		return this;
 	}
 }

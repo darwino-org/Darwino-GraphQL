@@ -24,10 +24,12 @@ package com.darwino.graphsql.service;
 
 import java.util.List;
 
+import com.darwino.commons.json.JsonException;
 import com.darwino.commons.services.HttpService;
 import com.darwino.commons.services.HttpServiceContext;
 import com.darwino.commons.services.rest.RestServiceBinder;
 import com.darwino.commons.services.rest.RestServiceFactory;
+import com.darwino.graphsql.GraphContext;
 
 import graphql.schema.GraphQLSchema;
 
@@ -50,6 +52,10 @@ public class GraphQLServiceFactory extends RestServiceFactory {
 		return schema;
 	}
 	
+	public GraphContext createContext() throws JsonException {
+		return new GraphContext();
+	}
+	
 	@Override
 	protected void createServicesBinders(List<RestServiceBinder> binders) {
 		/////////////////////////////////////////////////////////////////////////////////
@@ -70,6 +76,6 @@ public class GraphQLServiceFactory extends RestServiceFactory {
 	}
 	
 	protected GraphQLService newGraphQLService(boolean schemaJson) {
-		return new GraphQLService(getSchema(),schemaJson);
+		return new GraphQLService(this,schemaJson);
 	}
 }
