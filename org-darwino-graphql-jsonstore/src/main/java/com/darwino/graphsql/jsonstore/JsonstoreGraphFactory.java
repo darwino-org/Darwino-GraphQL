@@ -30,10 +30,11 @@ import com.darwino.commons.json.JsonException;
 import com.darwino.commons.json.jsonpath.JsonPath;
 import com.darwino.commons.util.StringUtil;
 import com.darwino.graphsql.GraphContext;
-import com.darwino.graphsql.json.GraphJsonObjectType;
+import com.darwino.graphsql.GraphFactory;
+import com.darwino.graphsql.GraphFactory.Builder;
 import com.darwino.graphsql.json.GraphJsonAccessor;
 import com.darwino.graphsql.json.GraphJsonDataFetcher;
-import com.darwino.graphsql.json.GraphJsonFieldProvider;
+import com.darwino.graphsql.json.JsonGraphFactory;
 import com.darwino.jsonstore.Document;
 import com.darwino.jsonstore.Session;
 
@@ -48,8 +49,40 @@ import graphql.schema.GraphQLTypeReference;
  * 
  * @author Philippe Riand
  */
-public class GraphJsonDocument extends GraphJsonFieldProvider {
+public class JsonstoreGraphFactory extends GraphFactory {
 
+	public JsonstoreGraphFactory() {
+		super("Json Store");
+	}
+	
+	@Override
+	public void extendTypes(Builder builders) {
+		// We extend the JSON type with new fields
+		GraphQLObjectType.Builder builder = builders.getObjectTypes().get(JsonGraphFactory.JSON_TYPE);
+		if(builder!=null) {
+			addJsonFields(builder);
+		}
+	}
+	
+	@Override
+	public void createQuery(Builder builders, GraphQLObjectType.Builder query) {
+		addJsonFields(query);
+	}
+
+	protected void addJsonFields(GraphQLObjectType.Builder builder) {
+		builder
+			.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name("Document")
+					.argument(databaseArgument)
+					.argument(storeArgument)
+					.argument(unidArgument)
+					.argument(idArgument)
+					.type(new GraphQLTypeReference(JsonGraphFactory.JSON_TYPE))
+					.dataFetcher(documentFecther)
+			)
+		;
+	}
+	
 	public static class DocumentAccessor extends GraphJsonAccessor {
 		
 		private Document document;
@@ -163,19 +196,4 @@ public class GraphJsonDocument extends GraphJsonFieldProvider {
 		.name("id")
 		.type(GraphQLString)
 		.build(); 
-
-	@Override
-	public void addJsonFields(GraphQLObjectType.Builder builder) {
-		builder
-			.field(GraphQLFieldDefinition.newFieldDefinition()
-					.name("Document")
-					.argument(databaseArgument)
-					.argument(storeArgument)
-					.argument(unidArgument)
-					.argument(idArgument)
-					.type(new GraphQLTypeReference(GraphJsonObjectType.TYPE))
-					.dataFetcher(documentFecther)
-			)
-		;
-	}
 }

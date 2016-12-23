@@ -10,6 +10,7 @@
 	<modules>
 		<module>org-darwino-graphql</module>
 		<module>org-darwino-graphql-jsonstore</module>
+		<module>graphql-example</module>
 	</modules>
 
 	<properties>
@@ -17,7 +18,7 @@
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<compiler>1.6</compiler>
 		
-		<darwino.version>1.5.0</darwino.version>
+		<DARWINO_VERSION>1.5.0</DARWINO_VERSION>
 	</properties>
 
 	<build>

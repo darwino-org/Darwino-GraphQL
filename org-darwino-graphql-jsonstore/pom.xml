@@ -13,7 +13,7 @@
 		<dependency>
 			<groupId>com.darwino</groupId>
 			<artifactId>dwo-jsonstore</artifactId>
-			<version>${darwino.version}</version>
+			<version>${DARWINO_VERSION}</version>
 			<scope>provided</scope>
 		</dependency>
 		<dependency>

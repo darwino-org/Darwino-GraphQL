@@ -7,19 +7,24 @@
 		<version>1.0.0-SNAPSHOT</version>
 	</parent>
 
-	<artifactId>org-darwino-graphql</artifactId>
+	<artifactId>graphql-example</artifactId>
 	
 	<dependencies>
 		<dependency>
 			<groupId>com.darwino</groupId>
-			<artifactId>dwo-commons-runtime</artifactId>
+			<artifactId>dwo-jre-jsonstore-jdbc</artifactId>
 			<version>${DARWINO_VERSION}</version>
 		</dependency>
 		<dependency>
-		    <groupId>com.graphql-java</groupId>
-		    <artifactId>graphql-java</artifactId>
-		    <version>2.2.0</version>
+			<groupId>org.darwino</groupId>
+			<artifactId>org-darwino-graphql-jsonstore</artifactId>
+			<version>1.0.0-SNAPSHOT</version>
 		</dependency>
+		<dependency>
+		    <groupId>org.postgresql</groupId>
+		    <artifactId>postgresql</artifactId>
+		    <version>9.4.1211.jre6</version>
+		</dependency>		
 	</dependencies>
 
 </project>

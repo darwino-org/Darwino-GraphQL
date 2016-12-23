@@ -33,26 +33,55 @@ import com.darwino.commons.json.JsonException;
 import com.darwino.commons.json.JsonUtil;
 import com.darwino.commons.json.jsonpath.JsonPath;
 import com.darwino.commons.json.jsonpath.JsonPathFactory;
+import com.darwino.graphsql.GraphFactory;
 
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
+import graphql.schema.GraphQLArgument;
 import graphql.schema.GraphQLList;
 import graphql.schema.GraphQLObjectType;
 import graphql.schema.GraphQLTypeReference;
 
-
 /**
- * JSON Standard fields..
- * 
+ * GraphQL factory dealing with JSON data.
+ *
  * @author Philippe Riand
  */
-public class GraphJsonStandardFieldProvider extends GraphJsonFieldProvider {
+public class JsonGraphFactory extends GraphFactory {
 	
-	public GraphJsonStandardFieldProvider() {
+	public static final String JSON_TYPE = "Json";
+	
+	public static GraphQLArgument pathArgument = new GraphQLArgument.Builder()
+			.name("path")
+			.type(GraphQLString)
+			.build();
+	
+	public JsonGraphFactory() {
+		super("Json");
 	}
 
 	@Override
-	public void addJsonFields(GraphQLObjectType.Builder builder) {
+	public void createTypes(Builder builders) {
+		// We create the JSON type
+		GraphQLObjectType.Builder builder = GraphQLObjectType.newObject()
+			.name(JSON_TYPE);
+		
+		// And we add the Json fields to it
+		addJsonFields(builder);
+		
+		builders.put(JSON_TYPE,builder);
+	}
+
+	@Override
+	public void extendTypes(Builder builders) {
+	}
+
+	@Override
+	public void createQuery(Builder builders, GraphQLObjectType.Builder query) {
+	}
+	
+	
+	protected void addJsonFields(GraphQLObjectType.Builder builder) {
 		builder
 			// Scalar types
 			.field(newFieldDefinition()
@@ -73,7 +102,7 @@ public class GraphJsonStandardFieldProvider extends GraphJsonFieldProvider {
 			.field(newFieldDefinition()
 					.name("object")
 					.argument(pathArgument)
-					.type(new GraphQLTypeReference(GraphJsonObjectType.TYPE))
+					.type(new GraphQLTypeReference(JSON_TYPE))
 					.dataFetcher(new JsonValueFecther(JsonUtil.TYPE_OBJECT)))
 			
 			// Arrays
@@ -95,7 +124,7 @@ public class GraphJsonStandardFieldProvider extends GraphJsonFieldProvider {
 			.field(newFieldDefinition()
 					.name("objectArray")
 					.argument(pathArgument)
-					.type(new GraphQLList(new GraphQLTypeReference(GraphJsonObjectType.TYPE)))
+					.type(new GraphQLList(new GraphQLTypeReference(JSON_TYPE)))
 					.dataFetcher(new JsonArrayFecther(JsonUtil.TYPE_OBJECT)))
 			;
 	}
@@ -176,4 +205,5 @@ public class GraphJsonStandardFieldProvider extends GraphJsonFieldProvider {
 			return path.readAsList(object);
 		}
 	}
+	
 }
