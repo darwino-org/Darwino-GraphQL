@@ -20,9 +20,10 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.darwino.graphsql.json;
+package com.darwino.graphsql.model;
 
 import com.darwino.commons.json.JsonException;
+import com.darwino.commons.json.JsonUtil;
 import com.darwino.commons.json.jsonpath.JsonPath;
 import com.darwino.commons.json.jsonpath.JsonPathFactory;
 
@@ -32,31 +33,34 @@ import graphql.schema.DataFetchingEnvironment;
 /**
  * Base class for a data fetcher.
  * 
- * This ensures that the returned type is a JsonAccessor.
- * 
  * @author Philippe Riand
  */
-public abstract class GraphJsonDataFetcher implements DataFetcher {
+public abstract class BaseDataFetcher<T> implements DataFetcher {
 	
-	public GraphJsonDataFetcher() {
+	public BaseDataFetcher() {
 	}
-	
-    @Override
-	public abstract GraphJsonAccessor get(DataFetchingEnvironment environment);
     
-	
 	protected String getStringParameter(DataFetchingEnvironment environment, String argName) throws JsonException {
-		return (String)getParameter(environment, argName);
+		return JsonUtil.asString(getParameter(environment, argName));
 	}
+	protected int getIntParameter(DataFetchingEnvironment environment, String argName) throws JsonException {
+		return JsonUtil.asInt(getParameter(environment, argName));
+	}
+	protected boolean getBooleanParameter(DataFetchingEnvironment environment, String argName) throws JsonException {
+		return JsonUtil.asBoolean(getParameter(environment, argName));
+	}
+	
 	private Object getParameter(DataFetchingEnvironment environment, String argName) throws JsonException {
 		Object value = environment.getArgument(argName);
 		if(value instanceof String) {
 			String s = (String)value;
-			if(s.startsWith("$.")) {
+			if(s.startsWith("${") && s.endsWith("}")) {
+				// TODO: Look for pipes
+				String expr = s.substring(2, s.length()-1);
 				Object source = environment.getSource();
-				if(source instanceof GraphJsonAccessor) {
-					JsonPath p = JsonPathFactory.get(s);
-					return ((GraphJsonAccessor)source).readValue(p);
+				if(source instanceof ObjectAccessor) {
+					JsonPath p = JsonPathFactory.get(expr);
+					return ((ObjectAccessor<?>)source).readValue(p);
 				}
 			}
 		}

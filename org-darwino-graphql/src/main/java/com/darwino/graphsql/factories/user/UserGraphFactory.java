@@ -20,18 +20,26 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.darwino.graphsql.user;
+package com.darwino.graphsql.factories.user;
 
 import static graphql.Scalars.GraphQLString;
 
 import com.darwino.commons.Platform;
 import com.darwino.commons.security.acl.User;
 import com.darwino.commons.security.acl.UserException;
+import com.darwino.commons.security.acl.UserService;
+import com.darwino.commons.util.StringUtil;
+import com.darwino.graphsql.GraphFactory;
+import com.darwino.graphsql.factories.json.JsonGraphFactory;
+import com.darwino.graphsql.model.BaseDataFetcher;
+import com.darwino.graphsql.model.ObjectDataFetcher;
+import com.darwino.graphsql.model.PojoAccessor;
 
-import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
+import graphql.schema.GraphQLArgument;
 import graphql.schema.GraphQLFieldDefinition;
 import graphql.schema.GraphQLObjectType;
+import graphql.schema.GraphQLTypeReference;
 
 
 /**
@@ -39,11 +47,11 @@ import graphql.schema.GraphQLObjectType;
  * 
  * @author Philippe Riand
  */
-public class GraphUserFactory {
+public class UserGraphFactory extends GraphFactory {
 	
-	public static final GraphUserFactory instance = new GraphUserFactory();
+	public static final UserGraphFactory instance = new UserGraphFactory();
 
-	public static class UserAttrDataFetcher implements DataFetcher {
+	public static class UserAttrDataFetcher extends BaseDataFetcher<Object> {
 		private String attrName;
 		public UserAttrDataFetcher(String attrName) {
 			this.attrName = attrName;
@@ -51,7 +59,9 @@ public class GraphUserFactory {
 	    @Override
 		public Object get(DataFetchingEnvironment environment) {
 	    	try {
-				return ((User)environment).getAttribute(attrName);
+	    		@SuppressWarnings("unchecked")
+				User u = ((PojoAccessor<User>)environment.getSource()).getValue();
+				return u.getAttribute(attrName);
 			} catch (UserException ex) {
 				Platform.log(ex);
 				return null;
@@ -61,10 +71,12 @@ public class GraphUserFactory {
 	
 	public static final String TYPE = "User";
 	
-	public GraphUserFactory() {
+	public UserGraphFactory() {
+		super("User");
 	}
 	
-	public GraphQLObjectType createType() {
+	@Override
+	public void createTypes(Builder builders) {
 		GraphQLObjectType.Builder builder = GraphQLObjectType.newObject()
 			.name(TYPE)
 			.field(GraphQLFieldDefinition.newFieldDefinition()
@@ -87,10 +99,72 @@ public class GraphUserFactory {
 				.type(GraphQLString)
 				.dataFetcher(new UserAttrDataFetcher(User.ATTR_PHOTOURL))
 			)
+			// Todo: Add generic attributes as well
 			// Todo: add groups, roles...
 		;
-		
-		
-		return builder.build();
+		builders.put(TYPE,builder);
+	}
+
+	public static GraphQLArgument dnArgument = new GraphQLArgument.Builder()
+			.name("dn")
+			.type(GraphQLString)
+			.build(); 
+	public static class UserFecther extends ObjectDataFetcher<User> {
+		public UserFecther() {
+		}
+		@Override
+		public PojoAccessor<User> get(DataFetchingEnvironment environment) {
+			try {
+				UserService svc = Platform.getService(UserService.class);
+				
+				String dn = getStringParameter(environment,"dn");
+				if(StringUtil.isEmpty(dn)) {
+					return null;
+				}
+				
+				User user = svc.findUser(dn);
+				if(user==null) {
+					return null;
+				}
+				return new PojoAccessor<User>(environment,user) {
+					@Override
+					protected Object getProperty(String propName) {
+						try {
+							return getValue().getAttribute(propName);
+						} catch (UserException e) {
+							return null;
+						}
+					}
+				};
+			} catch(Exception ex) {
+				return null;
+			}
+		}
+	};
+	private static UserFecther userFetcher = new UserFecther();
+
+	@Override
+	public void extendTypes(Builder builders) {
+		// We extend the JSON type with new fields
+		GraphQLObjectType.Builder builder = builders.getObjectTypes().get(JsonGraphFactory.JSON_TYPE);
+		if(builder!=null) {
+			addFields(builder);
+		}
+	}
+	
+	@Override
+	public void createQuery(Builder builders, GraphQLObjectType.Builder query) {
+		addFields(query);
+	}
+
+	public void addFields(GraphQLObjectType.Builder builder) {
+		builder
+			.field(GraphQLFieldDefinition.newFieldDefinition()
+				.name("User")
+				.argument(dnArgument)
+				.type(new GraphQLTypeReference(TYPE))
+				.dataFetcher(userFetcher)
+			)
+		;
 	}
 }

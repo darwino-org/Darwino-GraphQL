@@ -20,46 +20,17 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.darwino.graphsql.json;
-
-import java.util.List;
-
-import com.darwino.commons.json.JsonException;
-import com.darwino.commons.json.jsonpath.JsonPath;
+package com.darwino.graphsql.model;
 
 /**
- * Add access to JSON documents coming from the Darwino JSON store.
+ * Base class for an Object data fetcher.
+ * 
+ * This ensures that the returned type is a object accessor.
  * 
  * @author Philippe Riand
  */
-public abstract class GraphJsonAccessor {
+public abstract class ObjectDataFetcher<T> extends BaseDataFetcher<T> {
 	
-	public static final class Empty extends GraphJsonAccessor {
-		public Empty(GraphJsonAccessor parent) {
-			super(parent);
-		}
-		@Override
-		public Object readValue(JsonPath path) throws JsonException {
-			return null;
-		}
-		@Override
-		public List<?> readList(JsonPath path) throws JsonException {
-			return null;
-		}
-	};
-
-	private GraphJsonAccessor parent;
-	
-	public GraphJsonAccessor(Object parent) {
-		if(parent instanceof GraphJsonAccessor) {
-			this.parent = (GraphJsonAccessor)parent;
-		}
+	public ObjectDataFetcher() {
 	}
-	
-	public GraphJsonAccessor getParent() {
-		return parent;
-	}
-	
-	public abstract Object readValue(JsonPath path) throws JsonException;
-	public abstract List<?> readList(JsonPath path) throws JsonException;
 }

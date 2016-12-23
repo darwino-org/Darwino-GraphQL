@@ -20,7 +20,7 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.darwino.graphsql.json;
+package com.darwino.graphsql.factories.json;
 
 import static graphql.Scalars.GraphQLBoolean;
 import static graphql.Scalars.GraphQLFloat;
@@ -34,6 +34,7 @@ import com.darwino.commons.json.JsonUtil;
 import com.darwino.commons.json.jsonpath.JsonPath;
 import com.darwino.commons.json.jsonpath.JsonPathFactory;
 import com.darwino.graphsql.GraphFactory;
+import com.darwino.graphsql.model.ObjectAccessor;
 
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
@@ -147,10 +148,10 @@ public class JsonGraphFactory extends GraphFactory {
 			try {
 				String parent = (String)environment.getArgument("path");
 				JsonPath path = JsonPathFactory.get(parent);
-				GraphJsonAccessor source = (GraphJsonAccessor)environment.getSource();
+				ObjectAccessor<?> source = (ObjectAccessor<?>)environment.getSource();
 				Object o = source.readValue(path);
 				if(getType()==JsonUtil.TYPE_OBJECT) {
-					o = new JsonAccessor(source, o);
+					o = new JsonAccessor(environment, o);
 				} else {
 					o = JsonUtil.coerceType(getType(), o, null);
 				}
@@ -169,13 +170,13 @@ public class JsonGraphFactory extends GraphFactory {
 			try {
 				String parent = (String)environment.getArgument("path");
 				JsonPath path = JsonPathFactory.get(parent);
-				GraphJsonAccessor source = (GraphJsonAccessor)environment.getSource();
+				ObjectAccessor<?> source = (ObjectAccessor<?>)environment.getSource();
 				@SuppressWarnings("unchecked")
 				List<Object> items = (List<Object>)source.readList(path);
 				for(int i=0; i<items.size(); i++) {
 					Object o = items.get(i);
 					if(getType()==JsonUtil.TYPE_OBJECT) {
-						o = new JsonAccessor(source, o);
+						o = new JsonAccessor(environment, o);
 					} else {
 						o = JsonUtil.coerceType(getType(), o, null);
 					}
@@ -188,21 +189,18 @@ public class JsonGraphFactory extends GraphFactory {
 		}
 	}
 
-	public static class JsonAccessor extends GraphJsonAccessor {
+	public static class JsonAccessor extends ObjectAccessor<Object> {
 		
-		private Object object;
-		
-		public JsonAccessor(Object parent, Object object) {
-			super(parent);
-			this.object = object;
+		public JsonAccessor(DataFetchingEnvironment env, Object value) {
+			super(env,value);
 		}
 		@Override
 		public Object readValue(JsonPath path) throws JsonException {
-			return path.readValue(object);
+			return path.readValue(getValue());
 		}
 		@Override
 		public List<?> readList(JsonPath path) throws JsonException {
-			return path.readAsList(object);
+			return path.readAsList(getValue());
 		}
 	}
 	
