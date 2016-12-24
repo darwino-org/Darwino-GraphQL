@@ -35,6 +35,7 @@ import com.darwino.commons.util.StringUtil;
 import com.darwino.graphsql.GraphContext;
 import com.darwino.graphsql.GraphFactory;
 import com.darwino.graphsql.factories.json.JsonGraphFactory;
+import com.darwino.graphsql.model.BaseDataFetcher;
 import com.darwino.graphsql.model.ObjectAccessor;
 import com.darwino.graphsql.model.ObjectDataFetcher;
 import com.darwino.jsonstore.Cursor;
@@ -42,11 +43,13 @@ import com.darwino.jsonstore.Document;
 import com.darwino.jsonstore.Session;
 import com.darwino.jsonstore.callback.CursorEntry;
 import com.darwino.jsonstore.callback.CursorHandler;
+import com.darwino.jsonstore.callback.DocumentHandler;
 import com.darwino.jsonstore.query.nodes.SpecialFieldNode;
 
 import graphql.schema.DataFetchingEnvironment;
 import graphql.schema.GraphQLArgument;
 import graphql.schema.GraphQLFieldDefinition;
+import graphql.schema.GraphQLList;
 import graphql.schema.GraphQLObjectType;
 import graphql.schema.GraphQLTypeReference;
 
@@ -79,44 +82,65 @@ public class JsonStoreGraphFactory extends GraphFactory {
 		builder
 			.field(GraphQLFieldDefinition.newFieldDefinition()
 					.name("Document")
-					.argument(databaseArgument)
-					.argument(storeArgument)
-					.argument(unidArgument)
-					.argument(idArgument)
+					.argument(DocumentAccessor.getArguments())
 					.type(new GraphQLTypeReference(JsonGraphFactory.JSON_TYPE))
-					.dataFetcher(documentFecther)
+					.dataFetcher(new DocumentFecther())
 			)
 			.field(GraphQLFieldDefinition.newFieldDefinition()
-					.name("Cursor")
-					.argument(databaseArgument)
-					.argument(storeArgument)
-					.argument(indexArgument)
-					.argument(ftSearchArgument)
-					.argument(parentIdArgument)
-					.argument(keyArgument)
-					.argument(partialKeyArgument)
-					.argument(tagArgument)
-					.argument(startKeyArgument)
-					.argument(excludeStartArgument)
-					.argument(endKeyArgument)
-					.argument(excludeEndArgument)
-					.argument(skipArgument)
-					.argument(skipArgument)
-					.argument(hierarchicalArgument)
-					.argument(categoryCountArgument)
-					.argument(categoryStartArgument)
-					.argument(descendingArgument)
-					.argument(orderByArgument)
-					.argument(optionsArgument)
-					.argument(queryArgument)
-					.argument(extractArgument)
-					.argument(aggregateArgument)
-					.argument(subqueriesArgument)
+					.name("CursorEntry")
+					.argument(CursorEntryAccessor.getArguments())
 					.type(new GraphQLTypeReference(JsonGraphFactory.JSON_TYPE))
-					.dataFetcher(documentFecther)
+					.dataFetcher(new CursorEntryFecther())
+			)
+			.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name("CursorEntries")
+					.argument(CursorEntryAccessor.getArguments())
+					.type(new GraphQLList(new GraphQLTypeReference(JsonGraphFactory.JSON_TYPE)))
+					.dataFetcher(new CursorEntriesFecther())
+			)
+			.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name("CursorDocument")
+					.argument(CursorEntryAccessor.getArguments())
+					.type(new GraphQLTypeReference(JsonGraphFactory.JSON_TYPE))
+					.dataFetcher(new CursorDocumentFecther())
+			)
+			.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name("CursorDocuments")
+					.argument(CursorEntryAccessor.getArguments())
+					.type(new GraphQLList(new GraphQLTypeReference(JsonGraphFactory.JSON_TYPE)))
+					.dataFetcher(new CursorDocumentsFecther())
 			)
 		;
 	}
+	
+	public static final class Context {
+
+		private Session session;
+		private String database;
+		
+		public Context(Session session) {
+			this(session, null);
+		}
+		public Context(Session session, String database) {
+			this.session = session;
+			this.database = database;
+		}
+		
+		public Session getSession() {
+			return session;
+		}
+		public String getDatabase() {
+			return database;
+		}
+	}
+	
+	
+	
+	/////////////////////////////////////////////////////////////////////////////////
+	//
+	// Data accessors
+	//
+	/////////////////////////////////////////////////////////////////////////////////
 	
 	public static class DocumentAccessor extends ObjectAccessor<Document> {
 		
@@ -163,76 +187,16 @@ public class JsonStoreGraphFactory extends GraphFactory {
 			}
 			return null;
 		}
-	}
-	
-	public static final class Context {
 		
-		private Session session;
-		private String database;
-		
-		public Context(Session session) {
-			this(session, null);
-		}
-		public Context(Session session, String database) {
-			this.session = session;
-			this.database = database;
-		}
-		
-		public Session getSession() {
-			return session;
-		}
-		public String getDatabase() {
-			return database;
+		public static List<GraphQLArgument> getArguments() {
+			List<GraphQLArgument> args = new ArrayList<GraphQLArgument>();
+			args.add(databaseArgument);
+			args.add(storeArgument);
+			args.add(unidArgument);
+			args.add(idArgument);
+			return args;
 		}
 	}
-
-	public static class DocumentFecther extends ObjectDataFetcher<Document> {
-		public DocumentFecther() {
-		}
-		@Override
-		public DocumentAccessor get(DataFetchingEnvironment environment) {
-			try {
-				Context ctx = (Context)((GraphContext)environment.getContext()).get(Context.class);
-				if(ctx==null) {
-					return null;
-				}
-
-				Session session = ctx.getSession();
-				if(session==null) {
-					return null;
-				}
-				
-				String database = getStringParameter(environment,"database");
-				if(StringUtil.isEmpty(database)) {
-					database = ctx.getDatabase();
-					if(StringUtil.isEmpty(database)) {
-						return null;
-					}
-				}
-
-				Document doc = null;
-				
-				String unid = getStringParameter(environment,"unid");
-				if(StringUtil.isNotEmpty(unid)) {
-					String store = getStringParameter(environment,"store");
-					if(StringUtil.isEmpty(store)) {
-						return null;
-					}
-					doc = session.getDatabase(database).getStore(store).loadDocument(unid);
-				} else {
-					int id = getIntParameter(environment,"id");
-					if(id!=0) {
-						doc = session.getDatabase(database).loadDocumentById(id);
-					}
-				}
-				
-				return doc!=null ? new DocumentAccessor(environment,doc) : null;
-			} catch(Exception ex) {
-				return null;
-			}
-		}
-	};
-	public static DocumentFecther documentFecther = new DocumentFecther();
 
 	public static class CursorEntryAccessor extends ObjectAccessor<CursorEntry> {
 		
@@ -297,13 +261,108 @@ public class JsonStoreGraphFactory extends GraphFactory {
 			}
 			return null;
 		}
+
+		public static List<GraphQLArgument> getArguments() {
+			List<GraphQLArgument> args = new ArrayList<GraphQLArgument>();
+			args.add(databaseArgument);
+			args.add(storeArgument);
+			args.add(indexArgument);
+			args.add(ftSearchArgument);
+			args.add(parentIdArgument);
+			args.add(keyArgument);
+			args.add(partialKeyArgument);
+			args.add(tagArgument);
+			args.add(startKeyArgument);
+			args.add(excludeStartArgument);
+			args.add(endKeyArgument);
+			args.add(excludeEndArgument);
+			args.add(skipArgument);
+			args.add(limitArgument);
+			args.add(hierarchicalArgument);
+			args.add(categoryCountArgument);
+			args.add(categoryStartArgument);
+			args.add(descendingArgument);
+			args.add(orderByArgument);
+			args.add(optionsArgument);
+			args.add(queryArgument);
+			args.add(extractArgument);
+			args.add(aggregateArgument);
+			args.add(subqueriesArgument);
+			return args;
+		}
 	}
-	public static class DocumentsFecther extends ObjectDataFetcher<List<CursorEntryAccessor>> {
-		public static final int DEFAULT_LIMIT		= 100;
-		public DocumentsFecther() {
+
+	
+	/////////////////////////////////////////////////////////////////////////////////
+	//
+	// Document fetcher
+	//
+	/////////////////////////////////////////////////////////////////////////////////
+	
+	public static class DocumentFecther extends ObjectDataFetcher<Document> {
+		public DocumentFecther() {
 		}
 		@Override
-		public List<CursorEntryAccessor> get(final DataFetchingEnvironment environment) {
+		public DocumentAccessor get(DataFetchingEnvironment environment) {
+			try {
+				Context ctx = (Context)((GraphContext)environment.getContext()).get(Context.class);
+				if(ctx==null) {
+					return null;
+				}
+
+				Session session = ctx.getSession();
+				if(session==null) {
+					return null;
+				}
+				
+				String database = getStringParameter(environment,"database");
+				if(StringUtil.isEmpty(database)) {
+					database = ctx.getDatabase();
+					if(StringUtil.isEmpty(database)) {
+						return null;
+					}
+				}
+
+				Document doc = null;
+				
+				String unid = getStringParameter(environment,"unid");
+				if(StringUtil.isNotEmpty(unid)) {
+					String store = getStringParameter(environment,"store");
+					if(StringUtil.isEmpty(store)) {
+						return null;
+					}
+					doc = session.getDatabase(database).getStore(store).loadDocument(unid);
+				} else {
+					int id = getIntParameter(environment,"id");
+					if(id!=0) {
+						doc = session.getDatabase(database).loadDocumentById(id);
+					}
+				}
+				
+				return doc!=null ? new DocumentAccessor(environment,doc) : null;
+			} catch(Exception ex) {
+				return null;
+			}
+		}
+	};
+
+	
+	/////////////////////////////////////////////////////////////////////////////////
+	//
+	// Cursor accessor
+	//
+	/////////////////////////////////////////////////////////////////////////////////
+
+	public static abstract class BaseCursorFecther<T> extends BaseDataFetcher<T> {
+		
+		public static final int DEFAULT_LIMIT		= 100;
+		public static final int MAX_LIMIT			= 500;
+		
+		public BaseCursorFecther() {
+		}
+		
+		@Override
+		public Object get(DataFetchingEnvironment environment) {
 			try {
 				Context ctx = (Context)((GraphContext)environment.getContext()).get(Context.class);
 				if(ctx==null) {
@@ -337,20 +396,14 @@ public class JsonStoreGraphFactory extends GraphFactory {
 					}
 				}
 				initCursor(environment,c);
-				
-				final List<CursorEntryAccessor> entries = new ArrayList<CursorEntryAccessor>();
-				c.find(new CursorHandler() {
-					@Override
-					public boolean handle(CursorEntry entry) throws JsonException {
-						entries.add(new CursorEntryAccessor(environment,entry));
-						return false;
-					}
-				});
-				return entries;
+
+				return createAccessor(environment,c);
 			} catch(Exception ex) {
 				return null;
 			}
 		}
+		protected abstract Object createAccessor(final DataFetchingEnvironment environment, Cursor c) throws JsonException;
+
 		protected Cursor initCursor(DataFetchingEnvironment env, Cursor c) throws JsonException {
 			String ftsearch = getStringParameter(env,"ftsearch");
 			if(StringUtil.isNotEmpty(ftsearch)) {
@@ -501,7 +554,58 @@ public class JsonStoreGraphFactory extends GraphFactory {
 			}
 		}
 	};
-	public static DocumentFecther documentsFecther = new DocumentFecther();
+	
+	public static class CursorEntryFecther extends BaseCursorFecther<Object> {
+		public CursorEntryFecther() {
+		}
+		@Override
+		protected Object createAccessor(final DataFetchingEnvironment environment, Cursor c) throws JsonException {
+			CursorEntry entry = c.findOne();
+			return entry!=null ? new CursorEntryAccessor(environment, entry) : null;
+		}
+	};
+	public static class CursorEntriesFecther extends BaseCursorFecther<Object> {
+		public CursorEntriesFecther() {
+		}
+		@Override
+		protected Object createAccessor(final DataFetchingEnvironment environment, Cursor c) throws JsonException {
+			final List<CursorEntryAccessor> entries = new ArrayList<CursorEntryAccessor>();
+			c.find(new CursorHandler() {
+				@Override
+				public boolean handle(CursorEntry entry) throws JsonException {
+					entries.add(new CursorEntryAccessor(environment,entry));
+					return true;
+				}
+			});
+			return entries;
+		}
+	};
+	
+	public static class CursorDocumentFecther extends BaseCursorFecther<Object> {
+		public CursorDocumentFecther() {
+		}
+		@Override
+		protected Object createAccessor(final DataFetchingEnvironment environment, Cursor c) throws JsonException {
+			Document doc = c.findOneDocument();
+			return doc!=null ? new DocumentAccessor(environment, doc) : null;
+		}
+	};
+	public static class CursorDocumentsFecther extends BaseCursorFecther<Object> {
+		public CursorDocumentsFecther() {
+		}
+		@Override
+		protected Object createAccessor(final DataFetchingEnvironment environment, Cursor c) throws JsonException {
+			final List<DocumentAccessor> entries = new ArrayList<DocumentAccessor>();
+			c.findDocuments(new DocumentHandler() {
+				@Override
+				public boolean handle(Document doc) throws JsonException {
+					entries.add(new DocumentAccessor(environment,doc));
+					return true;
+				}
+			});
+			return entries;
+		}
+	};
 	
 	
 	// Common
