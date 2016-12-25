@@ -30,17 +30,21 @@ import static graphql.schema.GraphQLFieldDefinition.newFieldDefinition;
 import java.util.List;
 
 import com.darwino.commons.json.JsonException;
+import com.darwino.commons.json.JsonJavaFactory;
 import com.darwino.commons.json.JsonUtil;
 import com.darwino.commons.json.jsonpath.JsonPath;
 import com.darwino.commons.json.jsonpath.JsonPathFactory;
 import com.darwino.graphsql.GraphFactory;
 import com.darwino.graphsql.model.ObjectAccessor;
 
+import graphql.GraphQLException;
+import graphql.schema.Coercing;
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
 import graphql.schema.GraphQLArgument;
 import graphql.schema.GraphQLList;
 import graphql.schema.GraphQLObjectType;
+import graphql.schema.GraphQLScalarType;
 import graphql.schema.GraphQLTypeReference;
 
 /**
@@ -50,7 +54,7 @@ import graphql.schema.GraphQLTypeReference;
  */
 public class JsonGraphFactory extends GraphFactory {
 	
-	public static final String JSON_TYPE = "Json";
+	public static final String JSON_TYPE = "ExtandableJson";
 	
 	public static GraphQLArgument pathArgument = new GraphQLArgument.Builder()
 			.name("path")
@@ -89,44 +93,49 @@ public class JsonGraphFactory extends GraphFactory {
 					.name("boolean")
 					.argument(pathArgument)
 					.type(GraphQLBoolean)
-					.dataFetcher(new JsonValueFecther(JsonUtil.TYPE_BOOLEAN)))
+					.dataFetcher(new JsonValueFetcher(JsonUtil.TYPE_BOOLEAN)))
 			.field(newFieldDefinition()
 					.name("number")
 					.argument(pathArgument)
 					.type(GraphQLFloat)
-					.dataFetcher(new JsonValueFecther(JsonUtil.TYPE_NUMBER)))
+					.dataFetcher(new JsonValueFetcher(JsonUtil.TYPE_NUMBER)))
 			.field(newFieldDefinition()
 					.name("string")
 					.argument(pathArgument)
 					.type(GraphQLString)
-					.dataFetcher(new JsonValueFecther(JsonUtil.TYPE_STRING)))
+					.dataFetcher(new JsonValueFetcher(JsonUtil.TYPE_STRING)))
 			.field(newFieldDefinition()
 					.name("object")
 					.argument(pathArgument)
 					.type(new GraphQLTypeReference(JSON_TYPE))
-					.dataFetcher(new JsonValueFecther(JsonUtil.TYPE_OBJECT)))
+					.dataFetcher(new JsonValueFetcher(JsonUtil.TYPE_OBJECT)))
+			.field(newFieldDefinition()
+					.name("value")
+					.argument(pathArgument)
+					.type(JsonGraphFactory.GraphQLJsonValue)
+					.dataFetcher(new JsonFetcher()))
 			
 			// Arrays
 			.field(newFieldDefinition()
 					.name("booleanArray")
 					.argument(pathArgument)
 					.type(new GraphQLList(GraphQLBoolean))
-					.dataFetcher(new JsonArrayFecther(JsonUtil.TYPE_BOOLEAN)))
+					.dataFetcher(new JsonArrayFetcher(JsonUtil.TYPE_BOOLEAN)))
 			.field(newFieldDefinition()
 					.name("numberArray")
 					.argument(pathArgument)
 					.type(new GraphQLList(GraphQLFloat))
-					.dataFetcher(new JsonArrayFecther(JsonUtil.TYPE_NUMBER)))
+					.dataFetcher(new JsonArrayFetcher(JsonUtil.TYPE_NUMBER)))
 			.field(newFieldDefinition()
 					.name("stringArray")
 					.argument(pathArgument)
 					.type(new GraphQLList(GraphQLString))
-					.dataFetcher(new JsonArrayFecther(JsonUtil.TYPE_STRING)))
+					.dataFetcher(new JsonArrayFetcher(JsonUtil.TYPE_STRING)))
 			.field(newFieldDefinition()
 					.name("objectArray")
 					.argument(pathArgument)
 					.type(new GraphQLList(new GraphQLTypeReference(JSON_TYPE)))
-					.dataFetcher(new JsonArrayFecther(JsonUtil.TYPE_OBJECT)))
+					.dataFetcher(new JsonArrayFetcher(JsonUtil.TYPE_OBJECT)))
 			;
 	}
 	
@@ -139,8 +148,8 @@ public class JsonGraphFactory extends GraphFactory {
 			return type;
 		}
 	}
-	public static class JsonValueFecther extends ValueDataFetcher {
-		public JsonValueFecther(int type) {
+	public static class JsonValueFetcher extends ValueDataFetcher {
+		public JsonValueFetcher(int type) {
 			super(type);
 		}
 		@Override
@@ -161,8 +170,24 @@ public class JsonGraphFactory extends GraphFactory {
 			}
 		}
 	}
-	public static class JsonArrayFecther extends ValueDataFetcher {
-		public JsonArrayFecther(int type) {
+	public static class JsonFetcher implements DataFetcher {
+		public JsonFetcher() {
+		}
+		@Override
+		public Object get(DataFetchingEnvironment environment) {
+			try {
+				String parent = (String)environment.getArgument("path");
+				JsonPath path = JsonPathFactory.get(parent);
+				ObjectAccessor<?> source = (ObjectAccessor<?>)environment.getSource();
+				Object o = source.readValue(path);
+				return o;
+			} catch(Exception ex) {
+				return null;
+			}
+		}
+	}
+	public static class JsonArrayFetcher extends ValueDataFetcher {
+		public JsonArrayFetcher(int type) {
 			super(type);
 		}
 		@Override
@@ -204,4 +229,25 @@ public class JsonGraphFactory extends GraphFactory {
 		}
 	}
 	
+    public static GraphQLScalarType GraphQLJsonValue = new GraphQLScalarType("JsonValue", "Any value that is understood as a JSON value", new Coercing() {
+        @Override
+        public Object serialize(Object input) {
+        	return input;
+        }
+        @Override
+        public Object parseValue(Object input) {
+            return input;
+        }
+        @Override
+        public Object parseLiteral(Object input) {
+        	if(input instanceof String) {
+        		try {
+        			return JsonJavaFactory.instance.fromJson((String)input);
+        		} catch(JsonException ex) {
+        			throw new GraphQLException(ex);
+        		}
+        	}
+            return null;
+        }
+    });	
 }
