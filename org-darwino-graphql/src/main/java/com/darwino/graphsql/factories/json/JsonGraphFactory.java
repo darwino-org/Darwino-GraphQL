@@ -54,7 +54,7 @@ import graphql.schema.GraphQLTypeReference;
  */
 public class JsonGraphFactory extends GraphFactory {
 	
-	public static final String JSON_TYPE = "ExtandableJson";
+	public static final String JSON_TYPE = "JsonContent";
 	
 	public static GraphQLArgument pathArgument = new GraphQLArgument.Builder()
 			.name("path")
