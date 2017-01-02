@@ -24,6 +24,8 @@ package com.darwino.graphsql.factories.json;
 
 import static graphql.Scalars.GraphQLBoolean;
 import static graphql.Scalars.GraphQLFloat;
+import static graphql.Scalars.GraphQLInt;
+import static graphql.Scalars.GraphQLLong;
 import static graphql.Scalars.GraphQLString;
 import static graphql.schema.GraphQLFieldDefinition.newFieldDefinition;
 
@@ -114,6 +116,17 @@ public class JsonGraphFactory extends GraphFactory {
 					.argument(pathArgument)
 					.type(JsonGraphFactory.GraphQLJsonValue)
 					.dataFetcher(new JsonFetcher()))
+
+			.field(newFieldDefinition()
+					.name("int")
+					.argument(pathArgument)
+					.type(GraphQLInt)
+					.dataFetcher(new JsonValueFetcher(JsonUtil.TYPE_INT)))
+			.field(newFieldDefinition()
+					.name("long")
+					.argument(pathArgument)
+					.type(GraphQLLong)
+					.dataFetcher(new JsonValueFetcher(JsonUtil.TYPE_LONG)))
 			
 			// Arrays
 			.field(newFieldDefinition()
@@ -136,6 +149,17 @@ public class JsonGraphFactory extends GraphFactory {
 					.argument(pathArgument)
 					.type(new GraphQLList(new GraphQLTypeReference(JSON_TYPE)))
 					.dataFetcher(new JsonArrayFetcher(JsonUtil.TYPE_OBJECT)))
+
+			.field(newFieldDefinition()
+					.name("intArray")
+					.argument(pathArgument)
+					.type(new GraphQLList(GraphQLInt))
+					.dataFetcher(new JsonArrayFetcher(JsonUtil.TYPE_INT)))
+			.field(newFieldDefinition()
+					.name("longArray")
+					.argument(pathArgument)
+					.type(new GraphQLList(GraphQLLong))
+					.dataFetcher(new JsonArrayFetcher(JsonUtil.TYPE_LONG)))
 			;
 	}
 	
@@ -197,7 +221,7 @@ public class JsonGraphFactory extends GraphFactory {
 				JsonPath path = JsonPathFactory.get(parent);
 				ObjectAccessor<?> source = (ObjectAccessor<?>)environment.getSource();
 				@SuppressWarnings("unchecked")
-				List<Object> items = (List<Object>)source.readList(path);
+				List<Object> items = (List<Object>)source.readValue(path);
 				for(int i=0; i<items.size(); i++) {
 					Object o = items.get(i);
 					if(getType()==JsonUtil.TYPE_OBJECT) {

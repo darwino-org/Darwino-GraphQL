@@ -37,6 +37,9 @@ import graphql.schema.DataFetchingEnvironment;
  */
 public abstract class BaseDataFetcher<T> implements DataFetcher {
 	
+	public static final String EXPR_START	= "${";
+	public static final String EXPR_END		= "}";
+	
 	public BaseDataFetcher() {
 	}
     
@@ -54,7 +57,7 @@ public abstract class BaseDataFetcher<T> implements DataFetcher {
 		Object value = environment.getArgument(argName);
 		if(value instanceof String) {
 			String s = (String)value;
-			if(s.startsWith("${") && s.endsWith("}")) {
+			if(s.startsWith(EXPR_START) && s.endsWith(EXPR_END)) {
 				// TODO: Look for pipes
 				String expr = s.substring(2, s.length()-1);
 				Object source = environment.getSource();

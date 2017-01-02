@@ -141,9 +141,7 @@ public class GraphQLService extends HttpService {
 			extra.put("GraphQL", errlist);
 			
 			// Is there a std format for GraphQL errors?
-			// To be changed when 1.5.1 i sout
-			//throw HttpServiceError.error(null,HttpBase.SC_INTERNAL_SERVER_ERROR,extra,"Error while executing the GraphQL request");
-			throw HttpServiceError.error(null,HttpBase.SC_INTERNAL_SERVER_ERROR,"Error while executing the GraphQL request");
+			throw HttpServiceError.error(null,HttpBase.SC_INTERNAL_SERVER_ERROR,extra,"Error while executing the GraphQL request");
 		}
 	}	
 }

@@ -46,6 +46,7 @@ import com.darwino.jsonstore.callback.CursorHandler;
 import com.darwino.jsonstore.callback.DocumentHandler;
 import com.darwino.jsonstore.query.nodes.SpecialFieldNode;
 
+import graphql.GraphQLException;
 import graphql.schema.DataFetchingEnvironment;
 import graphql.schema.GraphQLArgument;
 import graphql.schema.GraphQLFieldDefinition;
@@ -84,31 +85,31 @@ public class JsonStoreGraphFactory extends GraphFactory {
 					.name("Document")
 					.argument(DocumentAccessor.getArguments())
 					.type(new GraphQLTypeReference(JsonGraphFactory.JSON_TYPE))
-					.dataFetcher(new DocumentFecther())
+					.dataFetcher(new DocumentFetcher())
 			)
 			.field(GraphQLFieldDefinition.newFieldDefinition()
 					.name("CursorEntry")
 					.argument(CursorEntryAccessor.getArguments())
 					.type(new GraphQLTypeReference(JsonGraphFactory.JSON_TYPE))
-					.dataFetcher(new CursorEntryFecther())
+					.dataFetcher(new CursorEntryFetcher())
 			)
 			.field(GraphQLFieldDefinition.newFieldDefinition()
 					.name("CursorEntries")
 					.argument(CursorEntryAccessor.getArguments())
 					.type(new GraphQLList(new GraphQLTypeReference(JsonGraphFactory.JSON_TYPE)))
-					.dataFetcher(new CursorEntriesFecther())
+					.dataFetcher(new CursorEntriesFetcher())
 			)
 			.field(GraphQLFieldDefinition.newFieldDefinition()
 					.name("CursorDocument")
 					.argument(CursorEntryAccessor.getArguments())
 					.type(new GraphQLTypeReference(JsonGraphFactory.JSON_TYPE))
-					.dataFetcher(new CursorDocumentFecther())
+					.dataFetcher(new CursorDocumentFetcher())
 			)
 			.field(GraphQLFieldDefinition.newFieldDefinition()
 					.name("CursorDocuments")
 					.argument(CursorEntryAccessor.getArguments())
 					.type(new GraphQLList(new GraphQLTypeReference(JsonGraphFactory.JSON_TYPE)))
-					.dataFetcher(new CursorDocumentsFecther())
+					.dataFetcher(new CursorDocumentsFetcher())
 			)
 		;
 	}
@@ -288,6 +289,10 @@ public class JsonStoreGraphFactory extends GraphFactory {
 			args.add(extractArgument);
 			args.add(aggregateArgument);
 			args.add(subqueriesArgument);
+			args.add(p0Argument);
+			args.add(p1Argument);
+			args.add(p2Argument);
+			args.add(p3Argument);
 			return args;
 		}
 	}
@@ -299,27 +304,27 @@ public class JsonStoreGraphFactory extends GraphFactory {
 	//
 	/////////////////////////////////////////////////////////////////////////////////
 	
-	public static class DocumentFecther extends ObjectDataFetcher<Document> {
-		public DocumentFecther() {
+	public static class DocumentFetcher extends ObjectDataFetcher<Document> {
+		public DocumentFetcher() {
 		}
 		@Override
 		public DocumentAccessor get(DataFetchingEnvironment environment) {
 			try {
 				Context ctx = (Context)((GraphContext)environment.getContext()).get(Context.class);
 				if(ctx==null) {
-					return null;
+					throw new GraphQLException(StringUtil.format("Missing JSON database context"));
 				}
 
 				Session session = ctx.getSession();
 				if(session==null) {
-					return null;
+					throw new GraphQLException(StringUtil.format("Missing JSON session in the database context"));
 				}
 				
 				String database = getStringParameter(environment,"database");
 				if(StringUtil.isEmpty(database)) {
 					database = ctx.getDatabase();
 					if(StringUtil.isEmpty(database)) {
-						return null;
+						throw new GraphQLException(StringUtil.format("Missing JSON database reference"));
 					}
 				}
 
@@ -341,7 +346,7 @@ public class JsonStoreGraphFactory extends GraphFactory {
 				
 				return doc!=null ? new DocumentAccessor(environment,doc) : null;
 			} catch(Exception ex) {
-				return null;
+				throw new GraphQLException(StringUtil.format("Error while loading the document"),ex);
 			}
 		}
 	};
@@ -366,19 +371,19 @@ public class JsonStoreGraphFactory extends GraphFactory {
 			try {
 				Context ctx = (Context)((GraphContext)environment.getContext()).get(Context.class);
 				if(ctx==null) {
-					return null;
+					throw new GraphQLException(StringUtil.format("Missing JSON database context"));
 				}
 
 				Session session = ctx.getSession();
 				if(session==null) {
-					return null;
+					throw new GraphQLException(StringUtil.format("Missing JSON session in the database context"));
 				}
 				
 				String database = getStringParameter(environment,"database");
 				if(StringUtil.isEmpty(database)) {
 					database = ctx.getDatabase();
 					if(StringUtil.isEmpty(database)) {
-						return null;
+						throw new GraphQLException(StringUtil.format("Missing JSON database reference"));
 					}
 				}
 				String store = getStringParameter(environment,"store");
@@ -399,7 +404,7 @@ public class JsonStoreGraphFactory extends GraphFactory {
 
 				return createAccessor(environment,c);
 			} catch(Exception ex) {
-				return null;
+				throw new GraphQLException(StringUtil.format("Error while executing the JSON query"),ex);
 			}
 		}
 		protected abstract Object createAccessor(final DataFetchingEnvironment environment, Cursor c) throws JsonException;
@@ -489,6 +494,10 @@ public class JsonStoreGraphFactory extends GraphFactory {
 			String query = getStringParameter(env,"query");
 			if(StringUtil.isNotEmpty(query)) {
 				c.query(query);
+				addParam(env, c, "p0");
+				addParam(env, c, "p1");
+				addParam(env, c, "p2");
+				addParam(env, c, "p3");
 			}
 			
 			String extract = getStringParameter(env,"extract");
@@ -507,6 +516,12 @@ public class JsonStoreGraphFactory extends GraphFactory {
 			}
 			
 			return c;
+		}
+		private void addParam(DataFetchingEnvironment env, Cursor c, String name) throws JsonException {
+			Object value = getStringParameter(env, name);
+			if(value!=null) {
+				c.param(name, value);
+			}
 		}
 		private int optionsFromString(String s) {
 			// If it is a number, then just parse it
@@ -555,8 +570,8 @@ public class JsonStoreGraphFactory extends GraphFactory {
 		}
 	};
 	
-	public static class CursorEntryFecther extends BaseCursorFecther<Object> {
-		public CursorEntryFecther() {
+	public static class CursorEntryFetcher extends BaseCursorFecther<Object> {
+		public CursorEntryFetcher() {
 		}
 		@Override
 		protected Object createAccessor(final DataFetchingEnvironment environment, Cursor c) throws JsonException {
@@ -564,8 +579,8 @@ public class JsonStoreGraphFactory extends GraphFactory {
 			return entry!=null ? new CursorEntryAccessor(environment, entry) : null;
 		}
 	};
-	public static class CursorEntriesFecther extends BaseCursorFecther<Object> {
-		public CursorEntriesFecther() {
+	public static class CursorEntriesFetcher extends BaseCursorFecther<Object> {
+		public CursorEntriesFetcher() {
 		}
 		@Override
 		protected Object createAccessor(final DataFetchingEnvironment environment, Cursor c) throws JsonException {
@@ -581,8 +596,8 @@ public class JsonStoreGraphFactory extends GraphFactory {
 		}
 	};
 	
-	public static class CursorDocumentFecther extends BaseCursorFecther<Object> {
-		public CursorDocumentFecther() {
+	public static class CursorDocumentFetcher extends BaseCursorFecther<Object> {
+		public CursorDocumentFetcher() {
 		}
 		@Override
 		protected Object createAccessor(final DataFetchingEnvironment environment, Cursor c) throws JsonException {
@@ -590,8 +605,8 @@ public class JsonStoreGraphFactory extends GraphFactory {
 			return doc!=null ? new DocumentAccessor(environment, doc) : null;
 		}
 	};
-	public static class CursorDocumentsFecther extends BaseCursorFecther<Object> {
-		public CursorDocumentsFecther() {
+	public static class CursorDocumentsFetcher extends BaseCursorFecther<Object> {
+		public CursorDocumentsFetcher() {
 		}
 		@Override
 		protected Object createAccessor(final DataFetchingEnvironment environment, Cursor c) throws JsonException {
@@ -714,6 +729,23 @@ public class JsonStoreGraphFactory extends GraphFactory {
 			.build(); 
 	public static GraphQLArgument subqueriesArgument = new GraphQLArgument.Builder()
 			.name("subqueries")
+			.type(GraphQLString)
+			.build();
+	
+	public static GraphQLArgument p0Argument = new GraphQLArgument.Builder()
+			.name("p0")
+			.type(GraphQLString)
+			.build(); 
+	public static GraphQLArgument p1Argument = new GraphQLArgument.Builder()
+			.name("p1")
+			.type(GraphQLString)
+			.build(); 
+	public static GraphQLArgument p2Argument = new GraphQLArgument.Builder()
+			.name("p2")
+			.type(GraphQLString)
+			.build(); 
+	public static GraphQLArgument p3Argument = new GraphQLArgument.Builder()
+			.name("p3")
 			.type(GraphQLString)
 			.build(); 
 }
