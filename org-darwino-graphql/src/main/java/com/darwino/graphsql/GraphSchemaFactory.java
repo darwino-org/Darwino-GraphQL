@@ -69,20 +69,23 @@ public class GraphSchemaFactory {
 
 	
 	public GraphQLSchema createSchema() {
-		List<GraphFactory> factories = findFactories();
+		final List<GraphFactory> factories = findFactories();
 
-		GraphFactory.Builder builders = new GraphFactory.Builder(); 
+		GraphFactory.Builder builders = new GraphFactory.Builder() {
+			@Override
+			public void addDynamicFields(GraphQLObjectType.Builder builder) {
+				int c = factories.size();
+				for(int i=0; i<c; i++) {
+					GraphFactory f = factories.get(i);
+					f.addDynamicFields(builder);
+				}
+			}
+		};
         
         // Create all the types from the factories 
 		for(int i=0; i<factories.size(); i++) {
 			GraphFactory f = factories.get(i);
 			f.createTypes(builders);
-		}
-		
-		// Once the types are created, then extend them
-		for(int i=0; i<factories.size(); i++) {
-			GraphFactory f = factories.get(i);
-			f.extendTypes(builders);
 		}
 		
 		// Create the main type

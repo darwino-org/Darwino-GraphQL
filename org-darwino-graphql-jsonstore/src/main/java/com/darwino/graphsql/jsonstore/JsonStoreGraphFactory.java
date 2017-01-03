@@ -34,7 +34,6 @@ import com.darwino.commons.json.jsonpath.JsonPath;
 import com.darwino.commons.util.StringUtil;
 import com.darwino.graphsql.GraphContext;
 import com.darwino.graphsql.GraphFactory;
-import com.darwino.graphsql.factories.json.JsonGraphFactory;
 import com.darwino.graphsql.model.BaseDataFetcher;
 import com.darwino.graphsql.model.ObjectAccessor;
 import com.darwino.graphsql.model.ObjectDataFetcher;
@@ -61,54 +60,59 @@ import graphql.schema.GraphQLTypeReference;
  */
 public class JsonStoreGraphFactory extends GraphFactory {
 
-	public JsonStoreGraphFactory() {
-		super("Json Store");
-	}
+	public static final String TYPE_DOCUMENT 	= "DBDocument";
+	public static final String TYPE_ENTRY 		= "DBEntry";
 	
+	public JsonStoreGraphFactory() {
+	}
+
 	@Override
-	public void extendTypes(Builder builders) {
-		// We extend the JSON type with new fields
-		GraphQLObjectType.Builder builder = builders.getObjectTypes().get(JsonGraphFactory.JSON_TYPE);
-		if(builder!=null) {
-			addJsonFields(builder);
+	public void createTypes(Builder builders) {
+		{
+			GraphQLObjectType.Builder docBuilder = GraphQLObjectType.newObject()
+				.name(TYPE_DOCUMENT);
+			builders.addDynamicFields(docBuilder);
+			builders.put(TYPE_DOCUMENT,docBuilder);
+		}
+		{
+			GraphQLObjectType.Builder entBuilder = GraphQLObjectType.newObject()
+				.name(TYPE_ENTRY);
+			builders.addDynamicFields(entBuilder);
+			builders.put(TYPE_ENTRY,entBuilder);
 		}
 	}
 	
 	@Override
-	public void createQuery(Builder builders, GraphQLObjectType.Builder query) {
-		addJsonFields(query);
-	}
-
-	protected void addJsonFields(GraphQLObjectType.Builder builder) {
+	public void addDynamicFields(GraphQLObjectType.Builder builder) {
 		builder
 			.field(GraphQLFieldDefinition.newFieldDefinition()
 					.name("Document")
 					.argument(DocumentAccessor.getArguments())
-					.type(new GraphQLTypeReference(JsonGraphFactory.JSON_TYPE))
+					.type(new GraphQLTypeReference(TYPE_DOCUMENT))
 					.dataFetcher(new DocumentFetcher())
 			)
 			.field(GraphQLFieldDefinition.newFieldDefinition()
 					.name("CursorEntry")
 					.argument(CursorEntryAccessor.getArguments())
-					.type(new GraphQLTypeReference(JsonGraphFactory.JSON_TYPE))
+					.type(new GraphQLTypeReference(TYPE_ENTRY))
 					.dataFetcher(new CursorEntryFetcher())
 			)
 			.field(GraphQLFieldDefinition.newFieldDefinition()
 					.name("CursorEntries")
 					.argument(CursorEntryAccessor.getArguments())
-					.type(new GraphQLList(new GraphQLTypeReference(JsonGraphFactory.JSON_TYPE)))
+					.type(new GraphQLList(new GraphQLTypeReference(TYPE_ENTRY)))
 					.dataFetcher(new CursorEntriesFetcher())
 			)
 			.field(GraphQLFieldDefinition.newFieldDefinition()
 					.name("CursorDocument")
 					.argument(CursorEntryAccessor.getArguments())
-					.type(new GraphQLTypeReference(JsonGraphFactory.JSON_TYPE))
+					.type(new GraphQLTypeReference(TYPE_DOCUMENT))
 					.dataFetcher(new CursorDocumentFetcher())
 			)
 			.field(GraphQLFieldDefinition.newFieldDefinition()
 					.name("CursorDocuments")
 					.argument(CursorEntryAccessor.getArguments())
-					.type(new GraphQLList(new GraphQLTypeReference(JsonGraphFactory.JSON_TYPE)))
+					.type(new GraphQLList(new GraphQLTypeReference(TYPE_DOCUMENT)))
 					.dataFetcher(new CursorDocumentsFetcher())
 			)
 		;

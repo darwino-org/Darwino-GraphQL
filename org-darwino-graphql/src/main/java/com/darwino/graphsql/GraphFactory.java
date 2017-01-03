@@ -38,7 +38,7 @@ import graphql.schema.GraphQLObjectType;
  */
 public abstract class GraphFactory {
 	
-	public static class Builder {
+	public static abstract class Builder {
 		
 		private Map<String,GraphQLObjectType.Builder> objectTypes = new HashMap<String, GraphQLObjectType.Builder>();
 		private Map<String,GraphQLInterfaceType.Builder> interfaceTypes = new HashMap<String, GraphQLInterfaceType.Builder>();
@@ -61,16 +61,11 @@ public abstract class GraphFactory {
 			interfaceTypes.put(name,builder);
 			return this;
 		}
+
+		public abstract void addDynamicFields(GraphQLObjectType.Builder builder);
 	}
 	
-	private String name;
-	
-	protected GraphFactory(String name) {
-		this.name = name;
-	}
-	
-	public String getName() {
-		return name;
+	protected GraphFactory() {
 	}
 
 	/**
@@ -79,12 +74,8 @@ public abstract class GraphFactory {
 	 */
 	public void createTypes(Builder builders) {
 	}
-
-	/**
-	 * Extend existing types
-	 * @param builders
-	 */
-	public void extendTypes(Builder builders) {
+	
+	public void addDynamicFields(GraphQLObjectType.Builder builder) {
 	}
 
 	/**
@@ -92,5 +83,6 @@ public abstract class GraphFactory {
 	 * @param builders
 	 */
 	public void createQuery(Builder builders, GraphQLObjectType.Builder query) {
+		addDynamicFields(query);
 	}
 }

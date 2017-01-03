@@ -20,7 +20,7 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.darwino.graphsql.factories.json;
+package com.darwino.graphsql.factories;
 
 import static graphql.Scalars.GraphQLBoolean;
 import static graphql.Scalars.GraphQLFloat;
@@ -54,112 +54,105 @@ import graphql.schema.GraphQLTypeReference;
  *
  * @author Philippe Riand
  */
-public class JsonGraphFactory extends GraphFactory {
+public class DynamicObjectGraphFactory extends GraphFactory {
 	
-	public static final String JSON_TYPE = "JsonContent";
+	public static final String DYNAMIC_TYPE = "DynamicContent";
 	
 	public static GraphQLArgument pathArgument = new GraphQLArgument.Builder()
 			.name("path")
 			.type(GraphQLString)
 			.build();
 	
-	public JsonGraphFactory() {
-		super("Json");
+	public DynamicObjectGraphFactory() {
 	}
 
 	@Override
 	public void createTypes(Builder builders) {
 		// We create the JSON type
 		GraphQLObjectType.Builder builder = GraphQLObjectType.newObject()
-			.name(JSON_TYPE);
+			.name(DYNAMIC_TYPE);
+		builders.addDynamicFields(builder);
 		
-		// And we add the Json fields to it
-		addJsonFields(builder);
-		
-		builders.put(JSON_TYPE,builder);
-	}
-
-	@Override
-	public void extendTypes(Builder builders) {
+		builders.put(DYNAMIC_TYPE,builder);
 	}
 
 	@Override
 	public void createQuery(Builder builders, GraphQLObjectType.Builder query) {
 	}
 	
-	
-	protected void addJsonFields(GraphQLObjectType.Builder builder) {
+	@Override
+	public void addDynamicFields(GraphQLObjectType.Builder builder) {
 		builder
 			// Scalar types
 			.field(newFieldDefinition()
 					.name("boolean")
 					.argument(pathArgument)
 					.type(GraphQLBoolean)
-					.dataFetcher(new JsonValueFetcher(JsonUtil.TYPE_BOOLEAN)))
+					.dataFetcher(new DynamicValueFetcher(JsonUtil.TYPE_BOOLEAN)))
 			.field(newFieldDefinition()
 					.name("number")
 					.argument(pathArgument)
 					.type(GraphQLFloat)
-					.dataFetcher(new JsonValueFetcher(JsonUtil.TYPE_NUMBER)))
+					.dataFetcher(new DynamicValueFetcher(JsonUtil.TYPE_NUMBER)))
 			.field(newFieldDefinition()
 					.name("string")
 					.argument(pathArgument)
 					.type(GraphQLString)
-					.dataFetcher(new JsonValueFetcher(JsonUtil.TYPE_STRING)))
+					.dataFetcher(new DynamicValueFetcher(JsonUtil.TYPE_STRING)))
 			.field(newFieldDefinition()
 					.name("object")
 					.argument(pathArgument)
-					.type(new GraphQLTypeReference(JSON_TYPE))
-					.dataFetcher(new JsonValueFetcher(JsonUtil.TYPE_OBJECT)))
+					.type(new GraphQLTypeReference(DYNAMIC_TYPE))
+					.dataFetcher(new DynamicValueFetcher(JsonUtil.TYPE_OBJECT)))
 			.field(newFieldDefinition()
 					.name("value")
 					.argument(pathArgument)
-					.type(JsonGraphFactory.GraphQLJsonValue)
-					.dataFetcher(new JsonFetcher()))
+					.type(DynamicObjectGraphFactory.GraphQLDynamicValue)
+					.dataFetcher(new DynamicFetcher()))
 
 			.field(newFieldDefinition()
 					.name("int")
 					.argument(pathArgument)
 					.type(GraphQLInt)
-					.dataFetcher(new JsonValueFetcher(JsonUtil.TYPE_INT)))
+					.dataFetcher(new DynamicValueFetcher(JsonUtil.TYPE_INT)))
 			.field(newFieldDefinition()
 					.name("long")
 					.argument(pathArgument)
 					.type(GraphQLLong)
-					.dataFetcher(new JsonValueFetcher(JsonUtil.TYPE_LONG)))
+					.dataFetcher(new DynamicValueFetcher(JsonUtil.TYPE_LONG)))
 			
 			// Arrays
 			.field(newFieldDefinition()
 					.name("booleanArray")
 					.argument(pathArgument)
 					.type(new GraphQLList(GraphQLBoolean))
-					.dataFetcher(new JsonArrayFetcher(JsonUtil.TYPE_BOOLEAN)))
+					.dataFetcher(new DynamicArrayFetcher(JsonUtil.TYPE_BOOLEAN)))
 			.field(newFieldDefinition()
 					.name("numberArray")
 					.argument(pathArgument)
 					.type(new GraphQLList(GraphQLFloat))
-					.dataFetcher(new JsonArrayFetcher(JsonUtil.TYPE_NUMBER)))
+					.dataFetcher(new DynamicArrayFetcher(JsonUtil.TYPE_NUMBER)))
 			.field(newFieldDefinition()
 					.name("stringArray")
 					.argument(pathArgument)
 					.type(new GraphQLList(GraphQLString))
-					.dataFetcher(new JsonArrayFetcher(JsonUtil.TYPE_STRING)))
+					.dataFetcher(new DynamicArrayFetcher(JsonUtil.TYPE_STRING)))
 			.field(newFieldDefinition()
 					.name("objectArray")
 					.argument(pathArgument)
-					.type(new GraphQLList(new GraphQLTypeReference(JSON_TYPE)))
-					.dataFetcher(new JsonArrayFetcher(JsonUtil.TYPE_OBJECT)))
+					.type(new GraphQLList(new GraphQLTypeReference(DYNAMIC_TYPE)))
+					.dataFetcher(new DynamicArrayFetcher(JsonUtil.TYPE_OBJECT)))
 
 			.field(newFieldDefinition()
 					.name("intArray")
 					.argument(pathArgument)
 					.type(new GraphQLList(GraphQLInt))
-					.dataFetcher(new JsonArrayFetcher(JsonUtil.TYPE_INT)))
+					.dataFetcher(new DynamicArrayFetcher(JsonUtil.TYPE_INT)))
 			.field(newFieldDefinition()
 					.name("longArray")
 					.argument(pathArgument)
 					.type(new GraphQLList(GraphQLLong))
-					.dataFetcher(new JsonArrayFetcher(JsonUtil.TYPE_LONG)))
+					.dataFetcher(new DynamicArrayFetcher(JsonUtil.TYPE_LONG)))
 			;
 	}
 	
@@ -172,8 +165,8 @@ public class JsonGraphFactory extends GraphFactory {
 			return type;
 		}
 	}
-	public static class JsonValueFetcher extends ValueDataFetcher {
-		public JsonValueFetcher(int type) {
+	public static class DynamicValueFetcher extends ValueDataFetcher {
+		public DynamicValueFetcher(int type) {
 			super(type);
 		}
 		@Override
@@ -184,7 +177,7 @@ public class JsonGraphFactory extends GraphFactory {
 				ObjectAccessor<?> source = (ObjectAccessor<?>)environment.getSource();
 				Object o = source.readValue(path);
 				if(getType()==JsonUtil.TYPE_OBJECT) {
-					o = new JsonAccessor(environment, o);
+					o = new DynamicObjectAccessor(environment, o);
 				} else {
 					o = JsonUtil.coerceType(getType(), o, null);
 				}
@@ -194,8 +187,8 @@ public class JsonGraphFactory extends GraphFactory {
 			}
 		}
 	}
-	public static class JsonFetcher implements DataFetcher {
-		public JsonFetcher() {
+	public static class DynamicFetcher implements DataFetcher {
+		public DynamicFetcher() {
 		}
 		@Override
 		public Object get(DataFetchingEnvironment environment) {
@@ -210,8 +203,8 @@ public class JsonGraphFactory extends GraphFactory {
 			}
 		}
 	}
-	public static class JsonArrayFetcher extends ValueDataFetcher {
-		public JsonArrayFetcher(int type) {
+	public static class DynamicArrayFetcher extends ValueDataFetcher {
+		public DynamicArrayFetcher(int type) {
 			super(type);
 		}
 		@Override
@@ -225,7 +218,7 @@ public class JsonGraphFactory extends GraphFactory {
 				for(int i=0; i<items.size(); i++) {
 					Object o = items.get(i);
 					if(getType()==JsonUtil.TYPE_OBJECT) {
-						o = new JsonAccessor(environment, o);
+						o = new DynamicObjectAccessor(environment, o);
 					} else {
 						o = JsonUtil.coerceType(getType(), o, null);
 					}
@@ -238,9 +231,9 @@ public class JsonGraphFactory extends GraphFactory {
 		}
 	}
 
-	public static class JsonAccessor extends ObjectAccessor<Object> {
+	public static class DynamicObjectAccessor extends ObjectAccessor<Object> {
 		
-		public JsonAccessor(DataFetchingEnvironment env, Object value) {
+		public DynamicObjectAccessor(DataFetchingEnvironment env, Object value) {
 			super(env,value);
 		}
 		@Override
@@ -253,7 +246,7 @@ public class JsonGraphFactory extends GraphFactory {
 		}
 	}
 	
-    public static GraphQLScalarType GraphQLJsonValue = new GraphQLScalarType("JsonValue", "Any value that is understood as a JSON value", new Coercing() {
+    public static GraphQLScalarType GraphQLDynamicValue = new GraphQLScalarType("DynamicObject", "Any value that is understood as a dynamic value", new Coercing() {
         @Override
         public Object serialize(Object input) {
         	return input;

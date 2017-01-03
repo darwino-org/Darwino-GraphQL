@@ -20,7 +20,7 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.darwino.graphsql.factories.user;
+package com.darwino.graphsql.factories;
 
 import static graphql.Scalars.GraphQLString;
 
@@ -30,11 +30,11 @@ import com.darwino.commons.security.acl.UserException;
 import com.darwino.commons.security.acl.UserService;
 import com.darwino.commons.util.StringUtil;
 import com.darwino.graphsql.GraphFactory;
-import com.darwino.graphsql.factories.json.JsonGraphFactory;
 import com.darwino.graphsql.model.BaseDataFetcher;
 import com.darwino.graphsql.model.ObjectDataFetcher;
 import com.darwino.graphsql.model.PojoAccessor;
 
+import graphql.GraphQLException;
 import graphql.schema.DataFetchingEnvironment;
 import graphql.schema.GraphQLArgument;
 import graphql.schema.GraphQLFieldDefinition;
@@ -72,7 +72,6 @@ public class UserGraphFactory extends GraphFactory {
 	public static final String TYPE = "User";
 	
 	public UserGraphFactory() {
-		super("User");
 	}
 	
 	@Override
@@ -99,9 +98,10 @@ public class UserGraphFactory extends GraphFactory {
 				.type(GraphQLString)
 				.dataFetcher(new UserAttrDataFetcher(User.ATTR_PHOTOURL))
 			)
-			// Todo: Add generic attributes as well
-			// Todo: add groups, roles...
 		;
+		
+		builders.addDynamicFields(builder);
+		
 		builders.put(TYPE,builder);
 	}
 
@@ -137,27 +137,14 @@ public class UserGraphFactory extends GraphFactory {
 					}
 				};
 			} catch(Exception ex) {
-				return null;
+				throw new GraphQLException("Error while fetching user object",ex);
 			}
 		}
 	};
 	private static UserFecther userFetcher = new UserFecther();
 
 	@Override
-	public void extendTypes(Builder builders) {
-		// We extend the JSON type with new fields
-		GraphQLObjectType.Builder builder = builders.getObjectTypes().get(JsonGraphFactory.JSON_TYPE);
-		if(builder!=null) {
-			addFields(builder);
-		}
-	}
-	
-	@Override
-	public void createQuery(Builder builders, GraphQLObjectType.Builder query) {
-		addFields(query);
-	}
-
-	public void addFields(GraphQLObjectType.Builder builder) {
+	public void addDynamicFields(GraphQLObjectType.Builder builder) {
 		builder
 			.field(GraphQLFieldDefinition.newFieldDefinition()
 				.name("User")
