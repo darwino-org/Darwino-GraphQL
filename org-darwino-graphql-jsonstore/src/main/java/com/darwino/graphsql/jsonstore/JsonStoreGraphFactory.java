@@ -23,6 +23,8 @@
 package com.darwino.graphsql.jsonstore;
 
 import static graphql.Scalars.GraphQLString;
+import static graphql.Scalars.GraphQLInt;
+import static graphql.Scalars.GraphQLBoolean;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +36,7 @@ import com.darwino.commons.json.jsonpath.JsonPath;
 import com.darwino.commons.util.StringUtil;
 import com.darwino.graphsql.GraphContext;
 import com.darwino.graphsql.GraphFactory;
+import com.darwino.graphsql.factories.DynamicObjectGraphFactory;
 import com.darwino.graphsql.model.BaseDataFetcher;
 import com.darwino.graphsql.model.ObjectAccessor;
 import com.darwino.graphsql.model.ObjectDataFetcher;
@@ -70,13 +73,98 @@ public class JsonStoreGraphFactory extends GraphFactory {
 	public void createTypes(Builder builders) {
 		{
 			GraphQLObjectType.Builder docBuilder = GraphQLObjectType.newObject()
-				.name(TYPE_DOCUMENT);
+				.name(TYPE_DOCUMENT)
+				.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name(SpecialFieldNode.ID)
+					.type(GraphQLString)
+					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.ID,JsonUtil.TYPE_STRING))
+				)
+				.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name(SpecialFieldNode.UNID)
+					.type(GraphQLString)
+					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.UNID,JsonUtil.TYPE_STRING))
+				)
+				.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name(SpecialFieldNode.CREATEDATE)
+					.type(GraphQLString)
+					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.CREATEDATE,JsonUtil.TYPE_STRING))
+				)
+				.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name(SpecialFieldNode.CREATEUSER)
+					.type(GraphQLString)
+					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.CREATEUSER,JsonUtil.TYPE_STRING))
+				)
+				.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name(SpecialFieldNode.LASTMODDATE)
+					.type(GraphQLString)
+					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.LASTMODDATE,JsonUtil.TYPE_STRING))
+				)
+				.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name(SpecialFieldNode.LASTMODUSER)
+					.type(GraphQLString)
+					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.LASTMODUSER,JsonUtil.TYPE_STRING))
+				);
 			builders.addDynamicFields(docBuilder);
 			builders.put(TYPE_DOCUMENT,docBuilder);
 		}
 		{
 			GraphQLObjectType.Builder entBuilder = GraphQLObjectType.newObject()
-				.name(TYPE_ENTRY);
+				.name(TYPE_ENTRY)
+				.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name(SpecialFieldNode.ID)
+					.type(GraphQLString)
+					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.ID,JsonUtil.TYPE_STRING))
+				)
+				.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name(SpecialFieldNode.UNID)
+					.type(GraphQLString)
+					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.UNID,JsonUtil.TYPE_STRING))
+				)
+				.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name(SpecialFieldNode.CREATEDATE)
+					.type(GraphQLString)
+					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.CREATEDATE,JsonUtil.TYPE_STRING))
+				)
+				.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name(SpecialFieldNode.CREATEUSER)
+					.type(GraphQLString)
+					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.CREATEUSER,JsonUtil.TYPE_STRING))
+				)
+				.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name(SpecialFieldNode.LASTMODDATE)
+					.type(GraphQLString)
+					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.LASTMODDATE,JsonUtil.TYPE_STRING))
+				)
+				.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name(SpecialFieldNode.LASTMODUSER)
+					.type(GraphQLString)
+					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.LASTMODUSER,JsonUtil.TYPE_STRING))
+				)
+				.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name(SpecialFieldNode.POSITION)
+					.type(GraphQLString)
+					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.POSITION,JsonUtil.TYPE_INT))
+				)
+				.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name(SpecialFieldNode.HIERLEVEL)
+					.type(GraphQLInt)
+					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.HIERLEVEL,JsonUtil.TYPE_INT))
+				)
+				.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name(SpecialFieldNode.ISCATEGORY)
+					.type(GraphQLBoolean)
+					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.ISCATEGORY,JsonUtil.TYPE_BOOLEAN))
+				)
+				.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name(SpecialFieldNode.CATEGORYCOUNT)
+					.type(GraphQLInt)
+					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.CATEGORYCOUNT,JsonUtil.TYPE_INT))
+				)
+				.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name(SpecialFieldNode.INDENTLEVEL)
+					.type(GraphQLInt)
+					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.INDENTLEVEL,JsonUtil.TYPE_INT))
+				);
 			builders.addDynamicFields(entBuilder);
 			builders.put(TYPE_ENTRY,entBuilder);
 		}

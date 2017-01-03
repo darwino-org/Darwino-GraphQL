@@ -88,145 +88,170 @@ public class DynamicObjectGraphFactory extends GraphFactory {
 					.name("boolean")
 					.argument(pathArgument)
 					.type(GraphQLBoolean)
-					.dataFetcher(new DynamicValueFetcher(JsonUtil.TYPE_BOOLEAN)))
+					.dataFetcher(new ValueFetcher(JsonUtil.TYPE_BOOLEAN)))
 			.field(newFieldDefinition()
 					.name("number")
 					.argument(pathArgument)
 					.type(GraphQLFloat)
-					.dataFetcher(new DynamicValueFetcher(JsonUtil.TYPE_NUMBER)))
+					.dataFetcher(new ValueFetcher(JsonUtil.TYPE_NUMBER)))
 			.field(newFieldDefinition()
 					.name("string")
 					.argument(pathArgument)
 					.type(GraphQLString)
-					.dataFetcher(new DynamicValueFetcher(JsonUtil.TYPE_STRING)))
+					.dataFetcher(new ValueFetcher(JsonUtil.TYPE_STRING)))
 			.field(newFieldDefinition()
 					.name("object")
 					.argument(pathArgument)
 					.type(new GraphQLTypeReference(DYNAMIC_TYPE))
-					.dataFetcher(new DynamicValueFetcher(JsonUtil.TYPE_OBJECT)))
+					.dataFetcher(new ValueFetcher(JsonUtil.TYPE_OBJECT)))
 			.field(newFieldDefinition()
 					.name("value")
 					.argument(pathArgument)
 					.type(DynamicObjectGraphFactory.GraphQLDynamicValue)
-					.dataFetcher(new DynamicFetcher()))
+					.dataFetcher(new JsonValueFetcher()))
 
 			.field(newFieldDefinition()
 					.name("int")
 					.argument(pathArgument)
 					.type(GraphQLInt)
-					.dataFetcher(new DynamicValueFetcher(JsonUtil.TYPE_INT)))
+					.dataFetcher(new ValueFetcher(JsonUtil.TYPE_INT)))
 			.field(newFieldDefinition()
 					.name("long")
 					.argument(pathArgument)
 					.type(GraphQLLong)
-					.dataFetcher(new DynamicValueFetcher(JsonUtil.TYPE_LONG)))
+					.dataFetcher(new ValueFetcher(JsonUtil.TYPE_LONG)))
 			
 			// Arrays
 			.field(newFieldDefinition()
 					.name("booleanArray")
 					.argument(pathArgument)
 					.type(new GraphQLList(GraphQLBoolean))
-					.dataFetcher(new DynamicArrayFetcher(JsonUtil.TYPE_BOOLEAN)))
+					.dataFetcher(new ArrayFetcher(JsonUtil.TYPE_BOOLEAN)))
 			.field(newFieldDefinition()
 					.name("numberArray")
 					.argument(pathArgument)
 					.type(new GraphQLList(GraphQLFloat))
-					.dataFetcher(new DynamicArrayFetcher(JsonUtil.TYPE_NUMBER)))
+					.dataFetcher(new ArrayFetcher(JsonUtil.TYPE_NUMBER)))
 			.field(newFieldDefinition()
 					.name("stringArray")
 					.argument(pathArgument)
 					.type(new GraphQLList(GraphQLString))
-					.dataFetcher(new DynamicArrayFetcher(JsonUtil.TYPE_STRING)))
+					.dataFetcher(new ArrayFetcher(JsonUtil.TYPE_STRING)))
 			.field(newFieldDefinition()
 					.name("objectArray")
 					.argument(pathArgument)
 					.type(new GraphQLList(new GraphQLTypeReference(DYNAMIC_TYPE)))
-					.dataFetcher(new DynamicArrayFetcher(JsonUtil.TYPE_OBJECT)))
+					.dataFetcher(new ArrayFetcher(JsonUtil.TYPE_OBJECT)))
 
 			.field(newFieldDefinition()
 					.name("intArray")
 					.argument(pathArgument)
 					.type(new GraphQLList(GraphQLInt))
-					.dataFetcher(new DynamicArrayFetcher(JsonUtil.TYPE_INT)))
+					.dataFetcher(new ArrayFetcher(JsonUtil.TYPE_INT)))
 			.field(newFieldDefinition()
 					.name("longArray")
 					.argument(pathArgument)
 					.type(new GraphQLList(GraphQLLong))
-					.dataFetcher(new DynamicArrayFetcher(JsonUtil.TYPE_LONG)))
+					.dataFetcher(new ArrayFetcher(JsonUtil.TYPE_LONG)))
 			;
 	}
 	
-	public static abstract class ValueDataFetcher implements DataFetcher {
+	public static abstract class BaseFetcher implements DataFetcher {
 		private int type;
-		public ValueDataFetcher(int type) {
+		public BaseFetcher(int type) {
 			this.type = type;
 		}
 		public int getType() {
 			return type;
 		}
 	}
-	public static class DynamicValueFetcher extends ValueDataFetcher {
-		public DynamicValueFetcher(int type) {
-			super(type);
+	public static class ValueFetcher implements DataFetcher {
+		private JsonPath path;
+		private int type;
+		public ValueFetcher(int type) {
+			this.type = type;
+		}
+		public ValueFetcher(String path, int type) {
+			try {
+				this.path = JsonPathFactory.get(path);
+				this.type = type;
+			} catch(Exception ex) {
+				throw new GraphQLException(ex);
+			}
 		}
 		@Override
 		public Object get(DataFetchingEnvironment environment) {
 			try {
-				String parent = (String)environment.getArgument("path");
-				JsonPath path = JsonPathFactory.get(parent);
+				JsonPath path = this.path!=null ? this.path : JsonPathFactory.get((String)environment.getArgument("path"));
 				ObjectAccessor<?> source = (ObjectAccessor<?>)environment.getSource();
 				Object o = source.readValue(path);
-				if(getType()==JsonUtil.TYPE_OBJECT) {
+				if(type==JsonUtil.TYPE_OBJECT) {
 					o = new DynamicObjectAccessor(environment, o);
 				} else {
-					o = JsonUtil.coerceType(getType(), o, null);
+					o = JsonUtil.coerceType(type, o, null);
 				}
 				return o;
 			} catch(Exception ex) {
-				return null;
+				throw new GraphQLException(ex);
 			}
 		}
 	}
-	public static class DynamicFetcher implements DataFetcher {
-		public DynamicFetcher() {
+	public static class JsonValueFetcher implements DataFetcher {
+		private JsonPath path;
+		public JsonValueFetcher() {
+		}
+		public JsonValueFetcher(String path) {
+			try {
+				this.path = JsonPathFactory.get(path);
+			} catch(Exception ex) {
+				throw new GraphQLException(ex);
+			}
 		}
 		@Override
 		public Object get(DataFetchingEnvironment environment) {
 			try {
-				String parent = (String)environment.getArgument("path");
-				JsonPath path = JsonPathFactory.get(parent);
+				JsonPath path = this.path!=null ? this.path : JsonPathFactory.get((String)environment.getArgument("path"));
 				ObjectAccessor<?> source = (ObjectAccessor<?>)environment.getSource();
 				Object o = source.readValue(path);
 				return o;
 			} catch(Exception ex) {
-				return null;
+				throw new GraphQLException(ex);
 			}
 		}
 	}
-	public static class DynamicArrayFetcher extends ValueDataFetcher {
-		public DynamicArrayFetcher(int type) {
-			super(type);
+	public static class ArrayFetcher implements DataFetcher {
+		private JsonPath path;
+		private int type;
+		public ArrayFetcher(int type) {
+			this.type = type;
+		}
+		public ArrayFetcher(String path, int type) {
+			try {
+				this.path = JsonPathFactory.get(path);
+				this.type = type;
+			} catch(Exception ex) {
+				throw new GraphQLException(ex);
+			}
 		}
 		@Override
 		public Object get(DataFetchingEnvironment environment) {
 			try {
-				String parent = (String)environment.getArgument("path");
-				JsonPath path = JsonPathFactory.get(parent);
+				JsonPath path = this.path!=null ? this.path : JsonPathFactory.get((String)environment.getArgument("path"));
 				ObjectAccessor<?> source = (ObjectAccessor<?>)environment.getSource();
 				@SuppressWarnings("unchecked")
-				List<Object> items = (List<Object>)source.readValue(path);
+				List<Object> items = (List<Object>)source.readList(path);
 				for(int i=0; i<items.size(); i++) {
 					Object o = items.get(i);
-					if(getType()==JsonUtil.TYPE_OBJECT) {
+					if(type==JsonUtil.TYPE_OBJECT) {
 						o = new DynamicObjectAccessor(environment, o);
 					} else {
-						o = JsonUtil.coerceType(getType(), o, null);
+						o = JsonUtil.coerceType(type, o, null);
 					}
 					items.set(i, o);
 				}
 				return items;
 			} catch(Exception ex) {
-				return null;
+				throw new GraphQLException(ex);
 			}
 		}
 	}
