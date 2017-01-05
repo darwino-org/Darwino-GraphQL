@@ -22,6 +22,9 @@
 
 package com.darwino.graphsql.service;
 
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +37,7 @@ import com.darwino.commons.services.HttpService;
 import com.darwino.commons.services.HttpServiceContext;
 import com.darwino.commons.services.HttpServiceError;
 import com.darwino.commons.util.StringUtil;
+import com.darwino.commons.util.io.StreamUtil;
 import com.darwino.graphsql.GraphContext;
 
 import graphql.ExecutionResult;
@@ -65,9 +69,13 @@ public class GraphQLService extends HttpService {
 		try {
 			if(schemaJson) {
 				if(context.isGet()) {
-			    	// TODO...
-			        //query(CharStreams.toString(new InputStreamReader(GraphQLServlet.class.getResourceAsStream("introspectionQuery"))), null, new HashMap<>(), schema, req, resp, context);
-					throw HttpServiceError.errorNotImplemented("Accessing the GraphQL schema is not implemented");
+					Reader r = new InputStreamReader(getClass().getResourceAsStream("IntrospectionQuery.graphql"));
+					try {
+						String query = StreamUtil.readString(r);
+						processRequest(context, getFactory().getSchema(), query, null, null);
+					} finally {
+						StreamUtil.close(r);
+					}
 				} else {
 					throw HttpServiceError.errorUnsupportedMethod(context.getMethod());
 				}
@@ -80,6 +88,8 @@ public class GraphQLService extends HttpService {
 					throw HttpServiceError.errorUnsupportedMethod(context.getMethod());
 				}
 			}
+		} catch(IOException ex) {
+			throw HttpServiceError.error500(ex);
 		} catch(JsonException ex) {
 			throw HttpServiceError.error500(ex);
 		}
