@@ -56,7 +56,7 @@ import graphql.schema.GraphQLTypeReference;
  */
 public class DynamicObjectGraphFactory extends GraphFactory {
 	
-	public static final String DYNAMIC_TYPE = "DynamicContent";
+	public static final String DYNAMIC_TYPE = "DwoObject";
 	
 	public static GraphQLArgument pathArgument = new GraphQLArgument.Builder()
 			.name("path")

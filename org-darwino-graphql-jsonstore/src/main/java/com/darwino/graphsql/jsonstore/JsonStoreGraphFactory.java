@@ -63,8 +63,8 @@ import graphql.schema.GraphQLTypeReference;
  */
 public class JsonStoreGraphFactory extends GraphFactory {
 
-	public static final String TYPE_DOCUMENT 	= "DBDocument";
-	public static final String TYPE_ENTRY 		= "DBEntry";
+	public static final String TYPE_DOCUMENT 	= "DwoDbDocument";
+	public static final String TYPE_ENTRY 		= "DwoDbEntry";
 	
 	public JsonStoreGraphFactory() {
 	}

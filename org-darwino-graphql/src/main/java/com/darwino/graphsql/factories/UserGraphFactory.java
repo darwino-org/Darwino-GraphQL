@@ -49,6 +49,8 @@ import graphql.schema.GraphQLTypeReference;
  */
 public class UserGraphFactory extends GraphFactory {
 	
+	public static final String TYPE = "DwoUser";
+	
 	public static final UserGraphFactory instance = new UserGraphFactory();
 
 	public static class UserAttrDataFetcher extends BaseDataFetcher<Object> {
@@ -68,8 +70,6 @@ public class UserGraphFactory extends GraphFactory {
 			}
 	    }
 	}
-	
-	public static final String TYPE = "User";
 	
 	public UserGraphFactory() {
 	}
