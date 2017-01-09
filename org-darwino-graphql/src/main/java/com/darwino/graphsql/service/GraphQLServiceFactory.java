@@ -30,6 +30,7 @@ import com.darwino.commons.services.HttpServiceContext;
 import com.darwino.commons.services.rest.RestServiceBinder;
 import com.darwino.commons.services.rest.RestServiceFactory;
 import com.darwino.graphsql.GraphContext;
+import com.darwino.graphsql.query.GraphQueryFactory;
 
 import graphql.schema.GraphQLSchema;
 
@@ -41,11 +42,13 @@ import graphql.schema.GraphQLSchema;
  */
 public class GraphQLServiceFactory extends RestServiceFactory {
 	
-	private GraphQLSchema schema;	
+	private GraphQLSchema schema;
+	private GraphQueryFactory queryFactory;
 	
-	public GraphQLServiceFactory(String path, GraphQLSchema schema) {
+	public GraphQLServiceFactory(String path, GraphQLSchema schema, GraphQueryFactory queryFactory) {
 		super(path);
 		this.schema = schema;
+		this.queryFactory = queryFactory;
 	}
 	
 	public GraphQLSchema getSchema() {
@@ -56,26 +59,37 @@ public class GraphQLServiceFactory extends RestServiceFactory {
 		return new GraphContext();
 	}
 	
+	public GraphQueryFactory getQueryFactory() throws JsonException {
+		return queryFactory;
+	}
+	
 	@Override
 	protected void createServicesBinders(List<RestServiceBinder> binders) {
 		/////////////////////////////////////////////////////////////////////////////////
 		// GraphQL query
-		binders.add(new RestServiceBinder() {
+		binders.add(new RestServiceBinder("query") {
 			@Override
 			public HttpService createService(HttpServiceContext context, String[] parts) {
-				return newGraphQLService(false);
+				return newGraphQLService(null);
 			}
 		});
-		// GraphQL schema
-		binders.add(new RestServiceBinder("schema.json") {
+		// GraphQL predefined query list
+		binders.add(new RestServiceBinder("queries") {
 			@Override
 			public HttpService createService(HttpServiceContext context, String[] parts) {
-				return newGraphQLService(true);
+				return new GraphQLQueryListService(GraphQLServiceFactory.this);
+			}
+		});
+		// GraphQL predefined queries
+		binders.add(new RestServiceBinder("queries",null) {
+			@Override
+			public HttpService createService(HttpServiceContext context, String[] parts) {
+				return newGraphQLService(parts[1]);
 			}
 		});
 	}
 	
-	protected GraphQLService newGraphQLService(boolean schemaJson) {
-		return new GraphQLService(this,schemaJson);
+	protected GraphQLService newGraphQLService(String queryName) {
+		return new GraphQLService(this,queryName);
 	}
 }

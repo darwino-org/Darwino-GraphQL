@@ -23,8 +23,6 @@
 package com.darwino.graphsql.service;
 
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -37,8 +35,9 @@ import com.darwino.commons.services.HttpService;
 import com.darwino.commons.services.HttpServiceContext;
 import com.darwino.commons.services.HttpServiceError;
 import com.darwino.commons.util.StringUtil;
-import com.darwino.commons.util.io.StreamUtil;
 import com.darwino.graphsql.GraphContext;
+import com.darwino.graphsql.query.GraphQuery;
+import com.darwino.graphsql.query.GraphQueryFactory;
 
 import graphql.ExecutionResult;
 import graphql.GraphQL;
@@ -57,25 +56,30 @@ import graphql.schema.GraphQLSchema;
 public class GraphQLService extends HttpService {
 	
 	private GraphQLServiceFactory factory;	
-	private boolean schemaJson;
+	private String queryName;
 	
-	public GraphQLService(GraphQLServiceFactory factory, boolean schemaJson) {
+	public GraphQLService(GraphQLServiceFactory factory, String queryName) {
 		this.factory = factory;
-		this.schemaJson = schemaJson;
+		this.queryName = queryName;
 	}
 	
 	@Override
 	public void service(HttpServiceContext context) {
 		try {
-			if(schemaJson) {
+			if(StringUtil.isNotEmpty(queryName)) {
 				if(context.isGet()) {
-					Reader r = new InputStreamReader(getClass().getResourceAsStream("IntrospectionQuery.graphql"));
-					try {
-						String query = StreamUtil.readString(r);
-						processRequest(context, getFactory().getSchema(), query, null, null);
-					} finally {
-						StreamUtil.close(r);
+					GraphQueryFactory qf = factory.getQueryFactory();
+					if(qf!=null) {
+						GraphQuery query = qf.getQuery(queryName);
+						if(query==null && queryName.endsWith(".json")) {
+							query = qf.getQuery(queryName.substring(0, queryName.length()-5));
+						}
+						if(query!=null) {
+							processRequest(context, getFactory().getSchema(), query.loadQuery(), null, null);
+							return;
+						}
 					}
+					throw HttpServiceError.errorNotFound(null,"GraphQL query {0} is not found",queryName);
 				} else {
 					throw HttpServiceError.errorUnsupportedMethod(context.getMethod());
 				}
