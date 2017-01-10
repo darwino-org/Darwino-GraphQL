@@ -29,6 +29,7 @@ import com.darwino.commons.security.acl.User;
 import com.darwino.commons.security.acl.UserException;
 import com.darwino.commons.security.acl.UserService;
 import com.darwino.commons.util.StringUtil;
+import com.darwino.graphsql.GraphContext;
 import com.darwino.graphsql.GraphFactory;
 import com.darwino.graphsql.model.BaseDataFetcher;
 import com.darwino.graphsql.model.ObjectDataFetcher;
@@ -48,11 +49,35 @@ import graphql.schema.GraphQLTypeReference;
  * @author Philippe Riand
  */
 public class UserGraphFactory extends GraphFactory {
+
+	public static final String ME_ID			= "@me";
+	
+	public static class Context {
+		public static Context get(DataFetchingEnvironment environment) {
+			Context ctx = (Context)((GraphContext)environment.getContext()).get(Context.class);
+			if(ctx==null) {
+				throw new GraphQLException(StringUtil.format("Missing User context"));
+			}
+			return ctx;
+		}
+		
+		public Context() {
+		}
+		public User getCurrentUser() {
+			User user = findCurrentUser();
+			if(user==null) {
+				throw new GraphQLException(StringUtil.format("Missing current user"));
+			}
+			return user;
+		}
+		public User findCurrentUser() {
+			return null;
+		}
+	}
+	
 	
 	public static final String TYPE = "DwoUser";
 	
-	public static final UserGraphFactory instance = new UserGraphFactory();
-
 	public static class UserAttrDataFetcher extends BaseDataFetcher<Object> {
 		private String attrName;
 		public UserAttrDataFetcher(String attrName) {
@@ -108,7 +133,8 @@ public class UserGraphFactory extends GraphFactory {
 	public static GraphQLArgument dnArgument = new GraphQLArgument.Builder()
 			.name("dn")
 			.type(GraphQLString)
-			.build(); 
+			.build();
+	
 	public static class UserFecther extends ObjectDataFetcher<User> {
 		public UserFecther() {
 		}
@@ -122,7 +148,7 @@ public class UserGraphFactory extends GraphFactory {
 					return null;
 				}
 				
-				User user = svc.findUser(dn);
+				User user = dn.equals(ME_ID) ? Context.get(environment).getCurrentUser() : svc.findUser(dn);
 				if(user==null) {
 					return null;
 				}
@@ -137,7 +163,10 @@ public class UserGraphFactory extends GraphFactory {
 					}
 				};
 			} catch(Exception ex) {
-				throw new GraphQLException("Error while fetching user object",ex);
+				if(ex instanceof GraphQLException) {
+					throw (GraphQLException)ex;
+				}
+				throw new GraphQLException("Error while fetching User object",ex);
 			}
 		}
 	};

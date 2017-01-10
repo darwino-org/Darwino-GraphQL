@@ -22,9 +22,9 @@
 
 package com.darwino.graphsql.jsonstore;
 
-import static graphql.Scalars.GraphQLString;
-import static graphql.Scalars.GraphQLInt;
 import static graphql.Scalars.GraphQLBoolean;
+import static graphql.Scalars.GraphQLInt;
+import static graphql.Scalars.GraphQLString;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -63,6 +63,35 @@ import graphql.schema.GraphQLTypeReference;
  */
 public class JsonStoreGraphFactory extends GraphFactory {
 
+	public static class Context {
+		public static Context get(DataFetchingEnvironment environment) {
+			Context ctx = (Context)((GraphContext)environment.getContext()).get(Context.class);
+			if(ctx==null) {
+				throw new GraphQLException(StringUtil.format("Missing JSON database context"));
+			}
+			return ctx;
+		}
+
+		private Session session;
+		private String database;
+		
+		public Context(Session session) {
+			this(session, null);
+		}
+		public Context(Session session, String database) {
+			this.session = session;
+			this.database = database;
+		}
+		
+		public Session getSession() {
+			return session;
+		}
+		public String getDatabase() {
+			return database;
+		}
+	}
+	
+	
 	public static final String TYPE_DOCUMENT 	= "DwoDbDocument";
 	public static final String TYPE_ENTRY 		= "DwoDbEntry";
 	
@@ -205,29 +234,7 @@ public class JsonStoreGraphFactory extends GraphFactory {
 			)
 		;
 	}
-	
-	public static final class Context {
-
-		private Session session;
-		private String database;
 		
-		public Context(Session session) {
-			this(session, null);
-		}
-		public Context(Session session, String database) {
-			this.session = session;
-			this.database = database;
-		}
-		
-		public Session getSession() {
-			return session;
-		}
-		public String getDatabase() {
-			return database;
-		}
-	}
-	
-	
 	
 	/////////////////////////////////////////////////////////////////////////////////
 	//
@@ -461,10 +468,7 @@ public class JsonStoreGraphFactory extends GraphFactory {
 		@Override
 		public Object get(DataFetchingEnvironment environment) {
 			try {
-				Context ctx = (Context)((GraphContext)environment.getContext()).get(Context.class);
-				if(ctx==null) {
-					throw new GraphQLException(StringUtil.format("Missing JSON database context"));
-				}
+				Context ctx = Context.get(environment);
 
 				Session session = ctx.getSession();
 				if(session==null) {
