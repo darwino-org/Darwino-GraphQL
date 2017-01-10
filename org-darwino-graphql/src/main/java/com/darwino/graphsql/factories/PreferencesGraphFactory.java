@@ -104,12 +104,11 @@ public class PreferencesGraphFactory extends GraphFactory {
 				
 				String user = getStringParameter(environment,"user");
 				if(StringUtil.isEmpty(user)) {
-					user = UserGraphFactory.ME_ID;
+					return null;
 				}
 				if(StringUtil.equals(user, UserGraphFactory.ME_ID)) {
 					user = UserGraphFactory.Context.get(environment).getCurrentUser().getDn();
 				}
-				
 				Preferences pref = svc.getPreferences(user, type);
 				if(pref==null) {
 					return null;
