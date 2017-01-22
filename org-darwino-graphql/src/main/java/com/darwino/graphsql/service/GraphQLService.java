@@ -72,7 +72,7 @@ public class GraphQLService extends HttpService {
 					if(qf!=null) {
 						GraphQuery query = qf.getQuery(queryName);
 						if(query==null && queryName.endsWith(".graphql")) {
-							query = qf.getQuery(queryName.substring(0, queryName.length()-5));
+							query = qf.getQuery(queryName.substring(0, queryName.length()-".graphql".length()));
 						}
 						if(query!=null) {
 							processRequest(context, getFactory().getSchema(), query.loadQuery(), null, null);
