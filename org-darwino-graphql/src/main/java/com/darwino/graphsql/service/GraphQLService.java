@@ -111,6 +111,9 @@ public class GraphQLService extends HttpService {
 		if(StringUtil.isNotEmpty(query)) {
 			String operationName = context.getQueryParameterString("operationName");
 			String sv = context.getQueryParameterString("variables");
+			if(StringUtil.isEmpty(sv)) {
+				sv = extractVariables(query);
+			}
 			Map<String,Object> variables;
 			try {
 				variables = StringUtil.isNotEmpty(sv) ? JsonObject.fromJson(sv) : null;
@@ -121,12 +124,30 @@ public class GraphQLService extends HttpService {
 		}
 	}
 
+	protected String extractVariables(String source) {
+		return null;
+	}
+	
+	protected Map<String,Object> getParametersFromString(String sv) {
+		if(StringUtil.isNotEmpty(sv)) {
+			try {
+				return JsonObject.fromJson(sv);
+			} catch(JsonException ex) {
+				throw HttpServiceError.error500(ex,"Error while parsing the viariables");
+			}
+		}
+		return null;
+	}
+
 	protected void processPost(HttpServiceContext context) throws JsonException {
 		JsonObject ct = (JsonObject)context.getContentAsJson();
 		String query = ct.getString("query");
 		if(StringUtil.isNotEmpty(query)) {
 			String operationName = ct.getString("operationName");
 			Map<String,Object> variables = ct.getObject("variables");
+			if(variables==null) {
+				variables = getParametersFromString(extractVariables(query));
+			}
 			processRequest(context, getFactory().getSchema(), query, operationName, variables);
 		}
 	}
