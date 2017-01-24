@@ -435,16 +435,25 @@ public class JsonStoreGraphFactory extends GraphFactory {
 					if(StringUtil.isEmpty(store)) {
 						return null;
 					}
-					doc = session.getDatabase(database).getStore(store).loadDocument(unid);
+					try {
+						doc = session.getDatabase(database).getStore(store).loadDocument(unid);
+					} catch(JsonException ex) {
+					}
 				} else {
 					int id = getIntParameter(environment,"id");
 					if(id!=0) {
-						doc = session.getDatabase(database).loadDocumentById(id);
+						try {
+							doc = session.getDatabase(database).loadDocumentById(id);
+						} catch(JsonException ex) {
+						}
 					}
 				}
 				
 				return doc!=null ? new DocumentAccessor(environment,doc) : null;
 			} catch(Exception ex) {
+				if(ex instanceof GraphQLException) {
+					throw (GraphQLException)ex;
+				}
 				throw new GraphQLException(StringUtil.format("Error while loading the document"),ex);
 			}
 		}
