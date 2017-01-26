@@ -65,7 +65,7 @@ public class JsonStoreGraphFactory extends GraphFactory {
 
 	public static class Context {
 		public static Context get(DataFetchingEnvironment environment) {
-			Context ctx = (Context)((GraphContext)environment.getContext()).get(Context.class);
+			Context ctx = ((GraphContext)environment.getContext()).get(Context.class);
 			if(ctx==null) {
 				throw new GraphQLException(StringUtil.format("Missing JSON database context"));
 			}
@@ -114,6 +114,21 @@ public class JsonStoreGraphFactory extends GraphFactory {
 					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.UNID,JsonUtil.TYPE_STRING))
 				)
 				.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name(SpecialFieldNode.STORE)
+					.type(GraphQLString)
+					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.STORE,JsonUtil.TYPE_STRING))
+				)
+				.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name(SpecialFieldNode.PSTORE)
+					.type(GraphQLString)
+					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.PSTORE,JsonUtil.TYPE_STRING))
+				)
+				.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name(SpecialFieldNode.PARENT)
+					.type(GraphQLString)
+					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.PARENT,JsonUtil.TYPE_STRING))
+				)
+				.field(GraphQLFieldDefinition.newFieldDefinition()
 					.name(SpecialFieldNode.CREATEDATE)
 					.type(GraphQLString)
 					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.CREATEDATE,JsonUtil.TYPE_STRING))
@@ -148,6 +163,21 @@ public class JsonStoreGraphFactory extends GraphFactory {
 					.name(SpecialFieldNode.UNID)
 					.type(GraphQLString)
 					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.UNID,JsonUtil.TYPE_STRING))
+				)
+				.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name(SpecialFieldNode.STORE)
+					.type(GraphQLString)
+					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.STORE,JsonUtil.TYPE_STRING))
+				)
+				.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name(SpecialFieldNode.PSTORE)
+					.type(GraphQLString)
+					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.PSTORE,JsonUtil.TYPE_STRING))
+				)
+				.field(GraphQLFieldDefinition.newFieldDefinition()
+					.name(SpecialFieldNode.PARENT)
+					.type(GraphQLString)
+					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SpecialFieldNode.PARENT,JsonUtil.TYPE_STRING))
 				)
 				.field(GraphQLFieldDefinition.newFieldDefinition()
 					.name(SpecialFieldNode.CREATEDATE)
@@ -257,6 +287,25 @@ public class JsonStoreGraphFactory extends GraphFactory {
 				if(sysField.equals(SpecialFieldNode.UNID)) {
 					return getValue().getUnid();
 				}
+				if(sysField.equals(SpecialFieldNode.STORE)) {
+					return getValue().getStore().getId();
+				}
+				if(sysField.equals(SpecialFieldNode.PSTORE)) {
+					String id = getValue().getParentUnid();
+					if(StringUtil.isNotEmpty(id)) {
+						int pos = id.indexOf(Document.STORE_UNID_SEP);
+						return pos>=0 ? id.substring(pos+1) : getValue().getStore().getId();
+					}
+					return null;
+				}
+				if(sysField.equals(SpecialFieldNode.PARENT)) {
+					String id = getValue().getParentUnid();
+					if(StringUtil.isNotEmpty(id)) {
+						int pos = id.indexOf(Document.STORE_UNID_SEP);
+						return pos>=0 ? id.substring(0,pos) : id;
+					}
+					return null;
+				}
 				if(sysField.equals(SpecialFieldNode.CREATEDATE)) {
 					return JsonUtil.asString(getValue().getCreationDate(),getValue().getDatabase().getJavaTimeZone());
 				}
@@ -313,6 +362,25 @@ public class JsonStoreGraphFactory extends GraphFactory {
 				}
 				if(sysField.equals(SpecialFieldNode.UNID)) {
 					return getValue().getUnid();
+				}
+				if(sysField.equals(SpecialFieldNode.STORE)) {
+					return getValue().getStore().getId();
+				}
+				if(sysField.equals(SpecialFieldNode.PSTORE)) {
+					String id = getValue().getParentUnid();
+					if(StringUtil.isNotEmpty(id)) {
+						int pos = id.indexOf(Document.STORE_UNID_SEP);
+						return pos>=0 ? id.substring(pos+1) : getValue().getStore().getId();
+					}
+					return null;
+				}
+				if(sysField.equals(SpecialFieldNode.PARENT)) {
+					String id = getValue().getParentUnid();
+					if(StringUtil.isNotEmpty(id)) {
+						int pos = id.indexOf(Document.STORE_UNID_SEP);
+						return pos>=0 ? id.substring(0,pos) : id;
+					}
+					return null;
 				}
 				if(sysField.equals(SpecialFieldNode.CREATEDATE)) {
 					return JsonUtil.asString(getValue().getCreationDate(),getValue().getDatabase().getJavaTimeZone());
@@ -409,7 +477,7 @@ public class JsonStoreGraphFactory extends GraphFactory {
 		@Override
 		public DocumentAccessor get(DataFetchingEnvironment environment) {
 			try {
-				Context ctx = (Context)((GraphContext)environment.getContext()).get(Context.class);
+				Context ctx = ((GraphContext)environment.getContext()).get(Context.class);
 				if(ctx==null) {
 					throw new GraphQLException(StringUtil.format("Missing JSON database context"));
 				}
@@ -454,7 +522,7 @@ public class JsonStoreGraphFactory extends GraphFactory {
 				if(ex instanceof GraphQLException) {
 					throw (GraphQLException)ex;
 				}
-				throw new GraphQLException(StringUtil.format("Error while loading the document"),ex);
+				throw new GraphQLException(StringUtil.format("Error while loading the document, {0}",ex.getLocalizedMessage()),ex);
 			}
 		}
 	};
@@ -466,12 +534,12 @@ public class JsonStoreGraphFactory extends GraphFactory {
 	//
 	/////////////////////////////////////////////////////////////////////////////////
 
-	public static abstract class BaseCursorFecther<T> extends BaseDataFetcher<T> {
+	public static abstract class BaseCursorFetcher<T> extends BaseDataFetcher<T> {
 		
 		public static final int DEFAULT_LIMIT		= 100;
 		public static final int MAX_LIMIT			= 500;
 		
-		public BaseCursorFecther() {
+		public BaseCursorFetcher() {
 		}
 		
 		@Override
@@ -509,7 +577,7 @@ public class JsonStoreGraphFactory extends GraphFactory {
 
 				return createAccessor(environment,c);
 			} catch(Exception ex) {
-				throw new GraphQLException(StringUtil.format("Error while executing the JSON query"),ex);
+				throw new GraphQLException(StringUtil.format("Error while executing the JSON query, {0}",ex.getLocalizedMessage()),ex);
 			}
 		}
 		protected abstract Object createAccessor(final DataFetchingEnvironment environment, Cursor c) throws JsonException;
@@ -675,7 +743,7 @@ public class JsonStoreGraphFactory extends GraphFactory {
 		}
 	};
 	
-	public static class CursorEntryFetcher extends BaseCursorFecther<Object> {
+	public static class CursorEntryFetcher extends BaseCursorFetcher<Object> {
 		public CursorEntryFetcher() {
 		}
 		@Override
@@ -684,7 +752,7 @@ public class JsonStoreGraphFactory extends GraphFactory {
 			return entry!=null ? new CursorEntryAccessor(environment, entry) : null;
 		}
 	};
-	public static class CursorEntriesFetcher extends BaseCursorFecther<Object> {
+	public static class CursorEntriesFetcher extends BaseCursorFetcher<Object> {
 		public CursorEntriesFetcher() {
 		}
 		@Override
@@ -701,7 +769,7 @@ public class JsonStoreGraphFactory extends GraphFactory {
 		}
 	};
 	
-	public static class CursorDocumentFetcher extends BaseCursorFecther<Object> {
+	public static class CursorDocumentFetcher extends BaseCursorFetcher<Object> {
 		public CursorDocumentFetcher() {
 		}
 		@Override
@@ -710,7 +778,7 @@ public class JsonStoreGraphFactory extends GraphFactory {
 			return doc!=null ? new DocumentAccessor(environment, doc) : null;
 		}
 	};
-	public static class CursorDocumentsFetcher extends BaseCursorFecther<Object> {
+	public static class CursorDocumentsFetcher extends BaseCursorFetcher<Object> {
 		public CursorDocumentsFetcher() {
 		}
 		@Override

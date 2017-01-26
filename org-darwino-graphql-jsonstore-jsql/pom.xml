@@ -7,7 +7,7 @@
 		<version>1.0.0-SNAPSHOT</version>
 	</parent>
 
-	<artifactId>org-darwino-graphql-jsonstore</artifactId>
+	<artifactId>org-darwino-graphql-jsonstore-jsql</artifactId>
 	
 	<dependencies>
 		<dependency>
@@ -17,8 +17,26 @@
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
+			<groupId>com.darwino</groupId>
+			<artifactId>dwo-jsonstore</artifactId>
+			<version>${DARWINO_VERSION}</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.darwino</groupId>
+			<artifactId>dwo-jsonstore-sql-jsql</artifactId>
+			<version>${DARWINO_VERSION}</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.darwino</groupId>
+			<artifactId>dwo-rdbc</artifactId>
+			<version>${DARWINO_VERSION}</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
 			<groupId>org.darwino</groupId>
-			<artifactId>org-darwino-graphql</artifactId>
+			<artifactId>org-darwino-graphql-jsonstore</artifactId>
 			<version>1.0.0-SNAPSHOT</version>
 		</dependency>
 	</dependencies>

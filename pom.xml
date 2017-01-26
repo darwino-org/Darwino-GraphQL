@@ -10,6 +10,7 @@
 	<modules>
 		<module>org-darwino-graphql</module>
 		<module>org-darwino-graphql-jsonstore</module>
+		<module>org-darwino-graphql-jsonstore-jsql</module>
 		<module>graphql-example</module>
 	</modules>
 

@@ -20,36 +20,31 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.darwino.graphsql;
+package com.darwino.graphsql.model;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
+
+import com.darwino.commons.json.JsonException;
+import com.darwino.commons.json.jsonpath.JsonPath;
+
+import graphql.schema.DataFetchingEnvironment;
 
 /**
- * GraphQL execution context.
- * 
- * This is the context that is passed to the execution engine.
+ * Add access to a JSON object.
  * 
  * @author Philippe Riand
  */
-public class GraphContext {
-
-	private Map<Class<?>,Object> contexts = new HashMap<Class<?>,Object>();
+public class JsonAccessor extends ObjectAccessor<Object> {
 	
-	public GraphContext() {
+	public JsonAccessor(DataFetchingEnvironment env, Object object) {
+		super(env,object);
 	}
-	
-	public Map<Class<?>,Object> getContexts() {
-		return contexts;
+	@Override
+	public Object readValue(JsonPath path) throws JsonException {
+		return path.readValue(getValue());
 	}
-	
-	@SuppressWarnings("unchecked")
-	public <T> T get(Class<T> c) {
-		return (T)contexts.get(c);
-	}
-	
-	public GraphContext put(Class<?> c, Object context) {
-		contexts.put(c,context);
-		return this;
+	@Override
+	public List<?> readList(JsonPath path) throws JsonException {
+		return path.readAsList(getValue());
 	}
 }
