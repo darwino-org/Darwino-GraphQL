@@ -30,6 +30,7 @@ import java.util.Map;
 import com.darwino.commons.httpclnt.HttpBase;
 import com.darwino.commons.json.JsonArray;
 import com.darwino.commons.json.JsonException;
+import com.darwino.commons.json.JsonJavaFactory;
 import com.darwino.commons.json.JsonObject;
 import com.darwino.commons.services.HttpService;
 import com.darwino.commons.services.HttpServiceContext;
@@ -111,9 +112,6 @@ public class GraphQLService extends HttpService {
 		if(StringUtil.isNotEmpty(query)) {
 			String operationName = context.getQueryParameterString("operationName");
 			String sv = context.getQueryParameterString("variables");
-			if(StringUtil.isEmpty(sv)) {
-				sv = extractVariables(query);
-			}
 			Map<String,Object> variables;
 			try {
 				variables = StringUtil.isNotEmpty(sv) ? JsonObject.fromJson(sv) : null;
@@ -122,10 +120,6 @@ public class GraphQLService extends HttpService {
 			}
 			processRequest(context, getFactory().getSchema(), query, operationName, variables);
 		}
-	}
-
-	protected String extractVariables(String source) {
-		return null;
 	}
 	
 	protected Map<String,Object> getParametersFromString(String sv) {
@@ -139,16 +133,17 @@ public class GraphQLService extends HttpService {
 		return null;
 	}
 
+	@SuppressWarnings("unchecked")
 	protected void processPost(HttpServiceContext context) throws JsonException {
 		JsonObject ct = (JsonObject)context.getContentAsJson();
 		String query = ct.getString("query");
 		if(StringUtil.isNotEmpty(query)) {
 			String operationName = ct.getString("operationName");
-			Map<String,Object> variables = ct.getObject("variables");
-			if(variables==null) {
-				variables = getParametersFromString(extractVariables(query));
+			Object variables = ct.get("variables");
+			if(variables instanceof String) {
+				variables = JsonJavaFactory.instance.fromJson((String)variables);
 			}
-			processRequest(context, getFactory().getSchema(), query, operationName, variables);
+			processRequest(context, getFactory().getSchema(), query, operationName, (Map<String, Object>)variables);
 		}
 	}
 	
