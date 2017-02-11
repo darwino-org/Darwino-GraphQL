@@ -32,7 +32,6 @@ import com.darwino.jsonstore.LocalJsonDBServer;
 import com.darwino.jsonstore.ServerACL;
 import com.darwino.jsonstore.Session;
 import com.darwino.jsonstore.local.DatabaseACLFactory;
-import com.darwino.jsonstore.meta._ServerACL;
 import com.darwino.jsonstore.sql.impl.full.LocalFullJsonDBServerImpl;
 import com.darwino.jsonstore.sql.impl.full.SqlContext;
 import com.darwino.jsonstore.sql.impl.full.context.SqlJdbcContext;
