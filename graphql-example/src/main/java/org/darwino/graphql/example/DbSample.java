@@ -29,9 +29,7 @@ import com.darwino.commons.util.PathUtil;
 import com.darwino.jdbc.connector.JdbcConnector;
 import com.darwino.jdbc.connector.JdbcDirectConnector;
 import com.darwino.jsonstore.LocalJsonDBServer;
-import com.darwino.jsonstore.ServerACL;
 import com.darwino.jsonstore.Session;
-import com.darwino.jsonstore.local.DatabaseACLFactory;
 import com.darwino.jsonstore.sql.impl.full.LocalFullJsonDBServerImpl;
 import com.darwino.jsonstore.sql.impl.full.SqlContext;
 import com.darwino.jsonstore.sql.impl.full.context.SqlJdbcContext;
@@ -83,9 +81,7 @@ public class DbSample {
 			SqlContext dbContext = SqlJdbcContext.create(dbDriver,connector,RDBMS_SCHEMA);
 			
 			// Map the server to this context
-			ServerACL acl = null;
-			DatabaseACLFactory dbAcl = null;
-			server = new LocalFullJsonDBServerImpl(dbContext, acl, dbAcl);
+			server = new LocalFullJsonDBServerImpl(dbContext);
 			
 			// Create a DB session
 			User user = new UserImpl("joe@darwino.org", "Joe Darwino");

@@ -30,15 +30,18 @@ import java.util.List;
 import java.util.Map;
 
 import com.darwino.commons.json.JsonException;
+import com.darwino.commons.json.JsonObject;
 import com.darwino.commons.util.StringUtil;
 import com.darwino.graphsql.GraphContext;
 import com.darwino.graphsql.GraphFactory;
 import com.darwino.graphsql.model.JsonAccessor;
 import com.darwino.graphsql.model.ObjectDataFetcher;
 import com.darwino.jsonstore.Document;
+import com.darwino.jsonstore.JsqlCursor;
 import com.darwino.jsonstore.Session;
-import com.darwino.jsonstore.sql.jsql.JsqlExecutor;
-import com.darwino.rdbc.SqlResultSet;
+import com.darwino.jsonstore.jsql.JsqlEntry;
+import com.darwino.jsonstore.jsql.JsqlHandler;
+import com.darwino.jsonstore.sql.jsql.JsqlCursorImpl;
 
 import graphql.GraphQLException;
 import graphql.schema.DataFetchingEnvironment;
@@ -111,7 +114,7 @@ public class JsqlGraphFactory extends GraphFactory {
 		public JsqlFetcher() {
 		}
 		@Override
-		public Object get(DataFetchingEnvironment environment) {
+		public Object get(final DataFetchingEnvironment environment) {
 			try {
 				JsonStoreGraphFactory.Context ctx = ((GraphContext)environment.getContext()).get(JsonStoreGraphFactory.Context.class);
 				if(ctx==null) {
@@ -138,30 +141,25 @@ public class JsqlGraphFactory extends GraphFactory {
 				addParam(environment, params, "p2");
 				addParam(environment, params, "p3");
 
-				JsqlExecutor jExecutor = new JsqlExecutor(session, database);
-				
-				List<Object> rows = new ArrayList<Object>();
-				SqlResultSet rs = jExecutor.executeQuery(sql, params);
-				try {
-					int skip = getIntParameter(environment,"skip");
-					if(skip>0) {
-						rs.skip(skip);
-					}
-					int limit = getIntParameter(environment,"limit");
-					if(limit<=0) {
-						// Should we limit the default limit?
-						limit = Integer.MAX_VALUE;
-					}
-					for(int i=0; i<limit; i++) {
-						Object row = jExecutor.loadRow(rs,false);
-						if(row==null) {
-							break;
-						}
-						rows.add(new JsonAccessor(environment,row));
-					}
-				} finally {
-					rs.close();
+				JsqlCursor jExecutor = new JsqlCursorImpl(session).database(database);
+				jExecutor.query(sql).params(params);
+
+				// Should we limit the default limit?
+				int skip = getIntParameter(environment,"skip");
+				int limit = getIntParameter(environment,"limit");
+				if(skip>0 || limit>0) {
+					jExecutor.range(skip, limit);
 				}
+
+				final List<Object> rows = new ArrayList<Object>();
+				jExecutor.find(new JsqlHandler() {
+					@Override
+					public boolean handle(JsqlEntry entry) throws JsonException {
+						JsonObject row = entry.getAsObject();
+						rows.add(new JsonAccessor(environment,row));
+						return true;
+					}
+				});
 				
 				return rows;
 			} catch(Exception ex) {
