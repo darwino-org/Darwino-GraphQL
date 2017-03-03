@@ -41,7 +41,6 @@ import com.darwino.jsonstore.JsqlCursor;
 import com.darwino.jsonstore.Session;
 import com.darwino.jsonstore.jsql.JsqlEntry;
 import com.darwino.jsonstore.jsql.JsqlHandler;
-import com.darwino.jsonstore.sql.jsql.JsqlCursorImpl;
 
 import graphql.GraphQLException;
 import graphql.schema.DataFetchingEnvironment;
@@ -141,7 +140,7 @@ public class JsqlGraphFactory extends GraphFactory {
 				addParam(environment, params, "p2");
 				addParam(environment, params, "p3");
 
-				JsqlCursor jExecutor = new JsqlCursorImpl(session).database(database);
+				JsqlCursor jExecutor = session.openJsqlCursor().database(database);
 				jExecutor.query(sql).params(params);
 
 				// Should we limit the default limit?
@@ -155,7 +154,7 @@ public class JsqlGraphFactory extends GraphFactory {
 				jExecutor.find(new JsqlHandler() {
 					@Override
 					public boolean handle(JsqlEntry entry) throws JsonException {
-						JsonObject row = entry.getAsObject();
+						JsonObject row = (JsonObject)entry.getObject();
 						rows.add(new JsonAccessor(environment,row));
 						return true;
 					}
