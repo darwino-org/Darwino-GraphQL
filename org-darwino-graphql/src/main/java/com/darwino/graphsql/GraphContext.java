@@ -28,7 +28,7 @@ import java.util.Map;
 /**
  * GraphQL execution context.
  * 
- * This is the context that is passed to the execution engine.
+ * This is the context that is passed to the execution engine. 
  * 
  * @author Philippe Riand
  */
