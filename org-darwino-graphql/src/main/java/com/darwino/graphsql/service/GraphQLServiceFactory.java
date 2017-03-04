@@ -67,10 +67,10 @@ public class GraphQLServiceFactory extends RestServiceFactory {
 	protected void createServicesBinders(List<RestServiceBinder> binders) {
 		/////////////////////////////////////////////////////////////////////////////////
 		// GraphQL query
-		binders.add(new RestServiceBinder("query") {
+		binders.add(new RestServiceBinder() {
 			@Override
 			public HttpService createService(HttpServiceContext context, String[] parts) {
-				return newGraphQLService(null);
+				return newGraphQLService();
 			}
 		});
 		// GraphQL predefined query list
@@ -80,16 +80,9 @@ public class GraphQLServiceFactory extends RestServiceFactory {
 				return new GraphQLQueryListService(GraphQLServiceFactory.this);
 			}
 		});
-		// GraphQL predefined queries
-		binders.add(new RestServiceBinder("queries",null) {
-			@Override
-			public HttpService createService(HttpServiceContext context, String[] parts) {
-				return newGraphQLService(parts[1]);
-			}
-		});
 	}
 	
-	protected GraphQLService newGraphQLService(String queryName) {
-		return new GraphQLService(this,queryName);
+	protected GraphQLService newGraphQLService() {
+		return new GraphQLService(this);
 	}
 }

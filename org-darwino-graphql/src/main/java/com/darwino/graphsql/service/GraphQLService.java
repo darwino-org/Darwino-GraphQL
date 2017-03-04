@@ -57,16 +57,15 @@ import graphql.schema.GraphQLSchema;
 public class GraphQLService extends HttpService {
 	
 	private GraphQLServiceFactory factory;	
-	private String queryName;
 	
-	public GraphQLService(GraphQLServiceFactory factory, String queryName) {
+	public GraphQLService(GraphQLServiceFactory factory) {
 		this.factory = factory;
-		this.queryName = queryName;
 	}
 	
 	@Override
 	public void service(HttpServiceContext context) {
 		try {
+			String queryName = context.getQueryParameterString("name");
 			if(StringUtil.isNotEmpty(queryName)) {
 				if(context.isGet()) {
 					GraphQueryFactory qf = factory.getQueryFactory();
