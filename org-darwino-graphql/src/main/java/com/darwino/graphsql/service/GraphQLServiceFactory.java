@@ -74,7 +74,7 @@ public class GraphQLServiceFactory extends RestServiceFactory {
 			}
 		});
 		// GraphQL predefined query list
-		binders.add(new RestServiceBinder("queries") {
+		binders.add(new RestServiceBinder("list") {
 			@Override
 			public HttpService createService(HttpServiceContext context, String[] parts) {
 				return new GraphQLQueryListService(GraphQLServiceFactory.this);

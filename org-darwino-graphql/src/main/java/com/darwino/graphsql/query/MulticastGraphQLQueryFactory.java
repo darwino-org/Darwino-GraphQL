@@ -22,6 +22,9 @@
 
 package com.darwino.graphsql.query;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import com.darwino.commons.json.JsonException;
@@ -31,9 +34,38 @@ import com.darwino.commons.json.JsonException;
  * 
  * @author Philippe Riand
  */
-public interface GraphQueryFactory {
+public class MulticastGraphQLQueryFactory implements GraphQueryFactory {
 	
-	public Set<String> getQueryNames() throws JsonException;
+	private List<GraphQueryFactory> factories;
+	
+	public MulticastGraphQLQueryFactory() {
+		this.factories = new ArrayList<GraphQueryFactory>();
+	}
+	
+	public List<GraphQueryFactory> getFactories() {
+		return factories;
+	}
+	
+	@Override
+	public Set<String> getQueryNames() throws JsonException {
+		Set<String> res = new HashSet<String>();
+		for(int i=0; i<factories.size(); i++) {
+			Set<String> s = factories.get(i).getQueryNames();
+			if(s!=null) {
+				res.addAll(s);
+			}
+		}
+		return res;
+	}
 
-	public GraphQuery getQuery(String name) throws JsonException;
+	@Override
+	public GraphQuery getQuery(String name) throws JsonException {
+		for(int i=0; i<factories.size(); i++) {
+			GraphQuery ms = factories.get(i).getQuery(name); 
+			if(ms!=null) {
+				return ms;
+			}
+		}
+		return null;
+	}
 }

@@ -1,0 +1,102 @@
+{
+  "swagger":"2.0",
+  "info": {
+    "version":"0.0.0",
+    "title":"\/GraphQL",
+    "description":"GraphQL services"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "host":"playground.darwino.com",
+  "basePath":"\/playground",
+  "securityDefinitions": {
+    "basicAuth": {
+      "type":"basic",
+      "description":"HTTP Basic Authentication. Works over 'HTTP' and 'HTTPS'"
+    }
+  },
+  "paths": {
+   "\/$darwino-graphql": {
+      "get": {
+        "summary":"Execute GraphQL",
+        "description":"Execute a GraphQL service. It takes a JSON payload as a parameter and return anothe JSON payload.",
+        "produces": [
+          "application\/json"
+        ],
+        "security": [
+                    {
+            "basicAuth": [
+
+            ]
+          }
+        ],
+        "parameters": [
+                    {
+            "name":"name",
+            "in":"query",
+            "description":"Name of the registered query to load",
+            "type":"string",
+            "required":false
+          },
+                    {
+            "name":"query",
+            "in":"query",
+            "description":"GraphQL query source",
+            "type":"string",
+            "required":false
+          },
+                    {
+            "name":"operationName",
+            "in":"query",
+            "description":"Name of the operation",
+            "type":"string",
+            "required":false
+          },
+                    {
+            "name":"variables",
+            "in":"query",
+            "description":"Parameters",
+            "type":"string",
+            "required":false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description":"Successful response"
+          },
+          "404": {
+            "description":"Not found"
+          }
+        }
+      }
+    },
+   "\/$darwino-graphql/list": {
+      "get": {
+        "summary":"List GraphQL queries",
+        "description":"List the available GraphQL services.",
+        "produces": [
+          "application\/json"
+        ],
+        "security": [
+                    {
+            "basicAuth": [
+
+            ]
+          }
+        ],
+        "parameters": [
+        ],
+        "responses": {
+          "200": {
+            "description":"Successful response"
+          },
+          "404": {
+            "description":"Not found"
+          }
+        }
+      }
+    }
+  }
+}
