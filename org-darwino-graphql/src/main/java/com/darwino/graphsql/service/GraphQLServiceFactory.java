@@ -27,6 +27,7 @@ import java.util.List;
 import com.darwino.commons.json.JsonException;
 import com.darwino.commons.services.HttpService;
 import com.darwino.commons.services.HttpServiceContext;
+import com.darwino.commons.services.HttpServiceDescription;
 import com.darwino.commons.services.rest.RestServiceBinder;
 import com.darwino.commons.services.rest.RestServiceFactory;
 import com.darwino.graphsql.GraphContext;
@@ -57,6 +58,18 @@ public class GraphQLServiceFactory extends RestServiceFactory {
 	
 	public GraphContext createContext() throws JsonException {
 		return new GraphContext();
+	}
+	
+	@Override
+	public void getServicesDescriptions(List<HttpServiceDescription> list) {
+		super.getServicesDescriptions(list);
+		list.add( new HttpServiceDescription(this,
+			"graphql",
+			"GraphQL",
+			"GraphQL Services",
+			"GraphQL Services",
+			"/openapi/GraphQL.json"
+		));
 	}
 	
 	public GraphQueryFactory getQueryFactory() throws JsonException {
