@@ -24,16 +24,15 @@ package com.darwino.graphsql.service;
 
 import java.util.List;
 
+import com.darwino.commons.Platform;
 import com.darwino.commons.json.JsonException;
 import com.darwino.commons.services.HttpService;
 import com.darwino.commons.services.HttpServiceContext;
 import com.darwino.commons.services.HttpServiceDescription;
 import com.darwino.commons.services.rest.RestServiceBinder;
 import com.darwino.commons.services.rest.RestServiceFactory;
-import com.darwino.graphsql.GraphContext;
-import com.darwino.graphsql.query.GraphQueryFactory;
-
-import graphql.schema.GraphQLSchema;
+import com.darwino.graphsql.query.GraphQLSession;
+import com.darwino.graphsql.query.GraphQLSessionFactory;
 
 
 /**
@@ -43,21 +42,16 @@ import graphql.schema.GraphQLSchema;
  */
 public class GraphQLServiceFactory extends RestServiceFactory {
 	
-	private GraphQLSchema schema;
-	private GraphQueryFactory queryFactory;
-	
-	public GraphQLServiceFactory(String path, GraphQLSchema schema, GraphQueryFactory queryFactory) {
+	public GraphQLServiceFactory(String path) {
 		super(path);
-		this.schema = schema;
-		this.queryFactory = queryFactory;
 	}
 	
-	public GraphQLSchema getSchema() {
-		return schema;
-	}
-	
-	public GraphContext createContext() throws JsonException {
-		return new GraphContext();
+	public GraphQLSession createSession(String contextName) throws JsonException {
+		GraphQLSessionFactory factory = Platform.getServiceUnchecked(GraphQLSessionFactory.class);
+		if(factory!=null) {
+			return factory.createSession(contextName);
+		}
+		throw new JsonException(null,"Missing GraphQL session factory");
 	}
 	
 	@Override
@@ -70,10 +64,6 @@ public class GraphQLServiceFactory extends RestServiceFactory {
 			"GraphQL Services",
 			"/openapi/GraphQL.json"
 		));
-	}
-	
-	public GraphQueryFactory getQueryFactory() throws JsonException {
-		return queryFactory;
 	}
 	
 	@Override

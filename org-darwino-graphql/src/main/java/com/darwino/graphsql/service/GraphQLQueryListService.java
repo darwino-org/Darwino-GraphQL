@@ -30,6 +30,7 @@ import com.darwino.commons.services.HttpService;
 import com.darwino.commons.services.HttpServiceContext;
 import com.darwino.commons.services.HttpServiceError;
 import com.darwino.commons.util.QuickSort;
+import com.darwino.graphsql.query.GraphQLSession;
 import com.darwino.graphsql.query.GraphQueryFactory;
 
 
@@ -50,12 +51,18 @@ public class GraphQLQueryListService extends HttpService {
 		return factory;
 	}
 	
+	public GraphQLSession getSession(HttpServiceContext context) throws JsonException {
+		return factory.createSession(null);
+	}
+	
 	@Override
 	public void service(HttpServiceContext context) {
 		try {
+			GraphQLSession session = getSession(context);
+
 			if(context.isGet()) {
 				JsonArray a = new JsonArray();
-				GraphQueryFactory qf = factory.getQueryFactory();
+				GraphQueryFactory qf = session.getQueryFactory();
 				if(qf!=null) {
 					Set<String> names = qf.getQueryNames();
 					a.addAll(names);

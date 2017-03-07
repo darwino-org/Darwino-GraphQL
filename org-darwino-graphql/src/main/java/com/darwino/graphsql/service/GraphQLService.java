@@ -37,13 +37,13 @@ import com.darwino.commons.services.HttpServiceContext;
 import com.darwino.commons.services.HttpServiceError;
 import com.darwino.commons.util.StringUtil;
 import com.darwino.graphsql.GraphContext;
+import com.darwino.graphsql.query.GraphQLSession;
 import com.darwino.graphsql.query.GraphQuery;
 import com.darwino.graphsql.query.GraphQueryFactory;
 
 import graphql.ExecutionResult;
 import graphql.GraphQL;
 import graphql.GraphQLError;
-import graphql.schema.GraphQLSchema;
 
 
 /**
@@ -62,20 +62,30 @@ public class GraphQLService extends HttpService {
 		this.factory = factory;
 	}
 	
+	public GraphQLServiceFactory getFactory() {
+		return factory;
+	}
+	
+	public GraphQLSession getSession(HttpServiceContext context) throws JsonException {
+		return factory.createSession(null);
+	}
+	
 	@Override
 	public void service(HttpServiceContext context) {
 		try {
+			GraphQLSession session = getSession(context);
+			
 			String queryName = context.getQueryParameterString("name");
 			if(StringUtil.isNotEmpty(queryName)) {
 				if(context.isGet()) {
-					GraphQueryFactory qf = factory.getQueryFactory();
+					GraphQueryFactory qf = session.getQueryFactory();
 					if(qf!=null) {
 						GraphQuery query = qf.getQuery(queryName);
 						if(query==null && queryName.endsWith(".graphql")) {
 							query = qf.getQuery(queryName.substring(0, queryName.length()-".graphql".length()));
 						}
 						if(query!=null) {
-							processRequest(context, getFactory().getSchema(), query.loadQuery(), null, null);
+							processRequest(context, session, query.loadQuery(), null, null);
 							return;
 						}
 					}
@@ -85,9 +95,9 @@ public class GraphQLService extends HttpService {
 				}
 			} else {
 				if(context.isGet()) {
-					processGet(context);
+					processGet(context,session);
 				} else if(context.isPost()) {
-					processPost(context);
+					processPost(context,session);
 				} else {
 					throw HttpServiceError.errorUnsupportedMethod(context.getMethod());
 				}
@@ -98,12 +108,8 @@ public class GraphQLService extends HttpService {
 			throw HttpServiceError.error500(ex);
 		}
 	}
-	
-	public GraphQLServiceFactory getFactory() {
-		return factory;
-	}
 
-	protected void processGet(HttpServiceContext context) throws JsonException {
+	protected void processGet(HttpServiceContext context, GraphQLSession session) throws JsonException {
 		String query = context.getQueryParameterString("query");
 		if(StringUtil.isEmpty(query)) {
 			query = context.getQueryParameterString("q"); // seems supported
@@ -117,7 +123,7 @@ public class GraphQLService extends HttpService {
 			} catch(JsonException ex) {
 				throw HttpServiceError.error500(ex,"Error while parsing the variables parameter");
 			}
-			processRequest(context, getFactory().getSchema(), query, operationName, variables);
+			processRequest(context, session, query, operationName, variables);
 		}
 	}
 	
@@ -133,7 +139,7 @@ public class GraphQLService extends HttpService {
 	}
 
 	@SuppressWarnings("unchecked")
-	protected void processPost(HttpServiceContext context) throws JsonException {
+	protected void processPost(HttpServiceContext context, GraphQLSession session) throws JsonException {
 		JsonObject ct = (JsonObject)context.getContentAsJson();
 		String query = ct.getString("query");
 		if(StringUtil.isNotEmpty(query)) {
@@ -142,19 +148,19 @@ public class GraphQLService extends HttpService {
 			if(variables instanceof String) {
 				variables = JsonJavaFactory.instance.fromJson((String)variables);
 			}
-			processRequest(context, getFactory().getSchema(), query, operationName, (Map<String, Object>)variables);
+			processRequest(context, session, query, operationName, (Map<String, Object>)variables);
 		}
 	}
 	
 	
-	protected void processRequest(HttpServiceContext context, GraphQLSchema schema, String query, String operationName, Map<String,Object> variables) throws JsonException {
+	protected void processRequest(HttpServiceContext context, GraphQLSession session, String query, String operationName, Map<String,Object> variables) throws JsonException {
 		if(variables==null) {
 			variables = Collections.emptyMap();
 		}
 		
-        GraphContext graphContext = getFactory().createContext();
+        GraphContext graphContext = session.getContext();
         
-		ExecutionResult result = new GraphQL(schema).execute(query,operationName,graphContext,variables);
+		ExecutionResult result = new GraphQL(session.getSchema()).execute(query,operationName,graphContext,variables);
 		if (result.getErrors().isEmpty()) {
 			JsonObject root = new JsonObject();
 			root.put("data", result.getData());
