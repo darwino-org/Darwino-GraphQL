@@ -22,9 +22,19 @@
 
 package com.darwino.graphsql.query;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+import com.darwino.commons.json.JsonArray;
 import com.darwino.commons.json.JsonException;
+import com.darwino.commons.json.JsonObject;
+import com.darwino.commons.services.HttpServiceError;
 import com.darwino.graphsql.GraphContext;
 
+import graphql.ExecutionResult;
+import graphql.GraphQL;
+import graphql.GraphQLError;
 import graphql.schema.GraphQLSchema;
 
 /**
@@ -42,4 +52,55 @@ public abstract class GraphQLSession {
 	public abstract GraphQueryFactory getQueryFactory() throws JsonException;
 
 	public abstract GraphContext getContext() throws JsonException;
+	
+	/**
+	 * Utility to execute a predefined query.
+	 */
+	public Object executePredefined(String queryName) throws JsonException {
+		return executePredefined(queryName, null, null);
+	}
+	public Object executePredefined(String queryName, Map<String,Object> variables) throws JsonException {
+		return executePredefined(queryName, null, variables);
+	}
+	public Object executePredefined(String queryName, String operationName, Map<String,Object> variables) throws JsonException {
+		GraphQueryFactory qf = getQueryFactory();
+		if(qf!=null) {
+			GraphQuery query = qf.getQuery(queryName);
+			if(query!=null) {
+				return execute(query.loadQuery(), operationName, variables);
+			}
+		}
+		throw HttpServiceError.errorNotFound(null,"GraphQL query {0} is not found",queryName);
+	}
+	
+	/**
+	 * Utility to execute an inline query.
+	 */
+	public Object execute(String query) throws JsonException {
+		return execute(query, null, null);
+	}
+	public Object execute(String query, Map<String,Object> variables) throws JsonException {
+		return execute(query, null, variables);
+	}
+	public Object execute(String query, String operationName, Map<String,Object> variables) throws JsonException {
+		GraphContext graphContext = getContext();
+		if(variables==null) variables=Collections.emptyMap();
+		ExecutionResult result = new GraphQL(getSchema()).execute(query,operationName,graphContext,variables);
+		if (result.getErrors().isEmpty()) {
+			JsonObject root = new JsonObject();
+			root.put("data", result.getData());
+			return root;
+		} else {
+			JsonArray errlist = new JsonArray();
+			List<GraphQLError> errors = result.getErrors();
+			for(GraphQLError e: errors) {
+				String err = e.toString();
+				errlist.add(err);
+			}
+			
+			JsonException ex = new JsonException(null,"Error while executing the GraphQL request");
+			ex.getExtraInformation().put("GraphQL", errlist);
+			throw ex;
+		}
+	}
 }

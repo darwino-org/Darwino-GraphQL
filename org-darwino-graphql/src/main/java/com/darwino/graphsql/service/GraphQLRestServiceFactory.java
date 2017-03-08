@@ -40,9 +40,9 @@ import com.darwino.graphsql.query.GraphQLSessionFactory;
  * 
  * @author Philippe Riand
  */
-public class GraphQLServiceFactory extends RestServiceFactory {
+public class GraphQLRestServiceFactory extends RestServiceFactory {
 	
-	public GraphQLServiceFactory(String path) {
+	public GraphQLRestServiceFactory(String path) {
 		super(path);
 	}
 	
@@ -80,7 +80,7 @@ public class GraphQLServiceFactory extends RestServiceFactory {
 		binders.add(new RestServiceBinder("list") {
 			@Override
 			public HttpService createService(HttpServiceContext context, String[] parts) {
-				return new GraphQLQueryListService(GraphQLServiceFactory.this);
+				return new GraphQLQueryListService(GraphQLRestServiceFactory.this);
 			}
 		});
 	}

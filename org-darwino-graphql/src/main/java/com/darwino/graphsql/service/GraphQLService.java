@@ -22,7 +22,6 @@
 
 package com.darwino.graphsql.service;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -56,13 +55,13 @@ import graphql.GraphQLError;
  */
 public class GraphQLService extends HttpService {
 	
-	private GraphQLServiceFactory factory;	
+	private GraphQLRestServiceFactory factory;	
 	
-	public GraphQLService(GraphQLServiceFactory factory) {
+	public GraphQLService(GraphQLRestServiceFactory factory) {
 		this.factory = factory;
 	}
 	
-	public GraphQLServiceFactory getFactory() {
+	public GraphQLRestServiceFactory getFactory() {
 		return factory;
 	}
 	
@@ -102,8 +101,6 @@ public class GraphQLService extends HttpService {
 					throw HttpServiceError.errorUnsupportedMethod(context.getMethod());
 				}
 			}
-		} catch(IOException ex) {
-			throw HttpServiceError.error500(ex);
 		} catch(JsonException ex) {
 			throw HttpServiceError.error500(ex);
 		}

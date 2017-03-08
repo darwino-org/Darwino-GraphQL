@@ -22,7 +22,7 @@
 
 package com.darwino.graphsql.query;
 
-import java.io.IOException;
+import com.darwino.commons.json.JsonException;
 
 /**
  * GraphQL query.
@@ -31,5 +31,5 @@ import java.io.IOException;
  */
 public interface GraphQuery {
 	
-	public String loadQuery() throws IOException;
+	public String loadQuery() throws JsonException;
 }

@@ -41,13 +41,13 @@ import com.darwino.graphsql.query.GraphQueryFactory;
  */
 public class GraphQLQueryListService extends HttpService {
 	
-	private GraphQLServiceFactory factory;	
+	private GraphQLRestServiceFactory factory;	
 	
-	public GraphQLQueryListService(GraphQLServiceFactory factory) {
+	public GraphQLQueryListService(GraphQLRestServiceFactory factory) {
 		this.factory = factory;
 	}
 	
-	public GraphQLServiceFactory getFactory() {
+	public GraphQLRestServiceFactory getFactory() {
 		return factory;
 	}
 	

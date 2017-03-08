@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 
+import com.darwino.commons.json.JsonException;
 import com.darwino.commons.util.io.StreamUtil;
 
 /**
@@ -44,11 +45,13 @@ public class ClasspathGraphQuery implements GraphQuery {
 	}
 	
 	@Override
-	public String loadQuery() throws IOException {
+	public String loadQuery() throws JsonException {
 		Reader r = new InputStreamReader(refClass.getResourceAsStream(resName));
 		try {
 			String query = StreamUtil.readString(r);
 			return query;
+		} catch(IOException ex) {
+			throw new JsonException(ex);
 		} finally {
 			StreamUtil.close(r);
 		}
