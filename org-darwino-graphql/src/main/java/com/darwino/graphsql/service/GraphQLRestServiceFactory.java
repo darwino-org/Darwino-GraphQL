@@ -29,6 +29,7 @@ import com.darwino.commons.json.JsonException;
 import com.darwino.commons.services.HttpService;
 import com.darwino.commons.services.HttpServiceContext;
 import com.darwino.commons.services.HttpServiceDescription;
+import com.darwino.commons.services.impl.DarwinoHttpServiceDescription;
 import com.darwino.commons.services.rest.RestServiceBinder;
 import com.darwino.commons.services.rest.RestServiceFactory;
 import com.darwino.graphsql.query.GraphQLSession;
@@ -57,7 +58,7 @@ public class GraphQLRestServiceFactory extends RestServiceFactory {
 	@Override
 	public void getServicesDescriptions(List<HttpServiceDescription> list) {
 		super.getServicesDescriptions(list);
-		list.add( new HttpServiceDescription(this,
+		list.add( new DarwinoHttpServiceDescription(this,
 			"graphql",
 			"GraphQL",
 			"GraphQL Services",

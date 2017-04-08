@@ -2,7 +2,7 @@
   "swagger":"2.0",
   "info": {
     "version":"0.0.0",
-    "title":"\/GraphQL",
+    "title":"GraphQL",
     "description":"GraphQL services"
   },
   "schemes": [
@@ -20,6 +20,9 @@
   "paths": {
    "\/$darwino-graphql": {
       "get": {
+        "tags": [
+        	"GraphQL"
+        ],
         "summary":"Execute GraphQL",
         "description":"Execute a GraphQL service. It takes a JSON payload as a parameter and return anothe JSON payload.",
         "produces": [
@@ -74,6 +77,9 @@
     },
    "\/$darwino-graphql/list": {
       "get": {
+        "tags": [
+        	"GraphQL"
+        ],
         "summary":"List GraphQL queries",
         "description":"List the available GraphQL services.",
         "produces": [
