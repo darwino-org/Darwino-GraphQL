@@ -44,7 +44,7 @@ public abstract class GObject {
 				append("]");
 			} else if(value instanceof CharSequence) {
 				append('"');
-				append(JavaTextUtil.toJavaString((CharSequence)value));
+				append(JavaTextUtil.toJavaString(String.valueOf(value)));
 				append('"');
 			} else if(value instanceof Number) {
 				append(string((Number)value));
