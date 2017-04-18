@@ -13,6 +13,7 @@
 
 package com.darwino.graphql.client;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.darwino.commons.json.JsonException;
@@ -22,25 +23,41 @@ import com.darwino.commons.json.JsonException;
  * 
  * @author priand
  */
-public class GraphQLDirective extends GraphQLObject {
+public class GDirective extends GObject {
 	
 	private String name;
 	private Map<String,Object> attributes;
 	
-	public GraphQLDirective() {
+	public GDirective() {
 	}
 
-	public GraphQLDirective name(String name) {
+	public GDirective(String name) {
+		name(name);
+	}
+
+	public GDirective name(String name) {
 		this.name = name;
 		return this;
 	}
 
+	public Map<String,Object> getAttributes() {
+		if(attributes==null) {
+			attributes = new LinkedHashMap<String, Object>();
+		}
+		return attributes;
+	}
+
+	public GDirective attribute(String name, Object value) {
+		getAttributes().put(name, value);
+		return this;
+	}
+
 	@Override
-	protected void toQuery(GraphQLBuilder b, boolean compact) throws JsonException {
+	protected void buildQuery(Builder b, boolean compact) throws JsonException {
 		b.append(name);
 		if(attributes!=null && !attributes.isEmpty()) {
 			b.append("(");
-			b.emitValue(attributes);
+			b.emitObjectContent(attributes);
 			b.append(")");
 		}
 	}

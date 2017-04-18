@@ -19,23 +19,28 @@ import java.util.List;
 import java.util.Map;
 
 import com.darwino.commons.json.JsonException;
+import com.darwino.commons.util.StringUtil;
 
 /**
  * Base class for a GraphQL Entry.
  * 
  * @author priand
  */
-public class GraphQLEntry extends GraphQLObject {
+public class GEntry extends GObject {
 	
 	private String name;
 	private Map<String,Object> attributes;
-	private List<GraphQLDirective> directives;
-	private List<GraphQLEntry> entries;
+	private List<GDirective> directives;
+	private List<GEntry> entries;
 	
-	public GraphQLEntry() {
+	public GEntry() {
 	}
 
-	public GraphQLEntry name(String name) {
+	public GEntry(String name) {
+		name(name);
+	}
+
+	public GEntry name(String name) {
 		this.name = name;
 		return this;
 	}
@@ -47,57 +52,61 @@ public class GraphQLEntry extends GraphQLObject {
 		return attributes;
 	}
 
-	public List<GraphQLDirective> getDirectives() {
+	public List<GDirective> getDirectives() {
 		if(directives==null) {
-			directives = new ArrayList<GraphQLDirective>();
+			directives = new ArrayList<GDirective>();
 		}
 		return directives;
 	}
 
-	public List<GraphQLEntry> getEntries() {
+	public List<GEntry> getEntries() {
 		if(entries==null) {
-			entries = new ArrayList<GraphQLEntry>();
+			entries = new ArrayList<GEntry>();
 		}
 		return entries;
 	}
 
-	public GraphQLEntry attribute(String name, Object value) {
+	public GEntry attribute(String name, Object value) {
 		getAttributes().put(name, value);
 		return this;
 	}
 
-	public GraphQLEntry directive(GraphQLDirective directive) {
+	public GEntry directive(GDirective directive) {
 		getDirectives().add(directive);
 		return this;
 	}
 
-	public GraphQLEntry entry(GraphQLEntry entry) {
+	public GEntry entry(GEntry entry) {
 		getEntries().add(entry);
 		return this;
 	}
 	
 	@Override
-	protected void toQuery(GraphQLBuilder b, boolean compact) throws JsonException {
+	protected void buildQuery(Builder b, boolean compact) throws JsonException {
+		if(StringUtil.isEmpty(name)) {
+			throw new JsonException(null,"Graph entry is missing a name");
+		}
 		b.append(name);
 		if(directives!=null && !directives.isEmpty()) {
 			int count = directives.size();
 			for(int i=0; i<count; i++) {
 				b.append(' ');
-				directives.get(i).toQuery();
+				directives.get(i).buildQuery(b,compact);
 			}
 		}
 		if(attributes!=null && !attributes.isEmpty()) {
 			b.append("(");
-			b.emitValue(attributes);
+			b.emitObjectContent(attributes);
 			b.append(")");
 		}
 		if(entries!=null && !entries.isEmpty()) {
 			b.append(" {");
-			if(!compact) { b.incIndent(); b.nl(); }
+			if(!compact) { b.incIndent(); }
 			int count = entries.size();
 			for(int i=0; i<count; i++) {
-				GraphQLEntry e = entries.get(i);
-				e.toQuery(b, compact);
+				if(!compact) b.nl();
+				GEntry e = entries.get(i);
+				e.buildQuery(b, compact);
 			}
 			if(!compact) { b.decIndent(); b.nl(); }
 			b.append("}");

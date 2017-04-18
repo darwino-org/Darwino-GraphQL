@@ -16,23 +16,22 @@ package com.darwino.graphql.client;
 import com.darwino.commons.json.JsonException;
 
 /**
- * Base class for a GraphQL client objects.
+ * GraphQL Query Request.
  * 
  * @author priand
  */
-public abstract class GraphQLObject {
+public class GField extends GEntry {
 	
-	public GraphQLObject() {
-	}
-	
-	public String toQuery() throws JsonException {
-		return toQuery(true);
-	}
-	public String toQuery(boolean compact) throws JsonException {
-		GraphQLBuilder b = new GraphQLBuilder();
-		toQuery(b, compact);
-		return b.toString();
+	public GField() {
 	}
 
-	protected abstract void toQuery(GraphQLBuilder b, boolean compact) throws JsonException;
+	public GField(String name) {
+		super(name);
+	}
+	
+	@Override
+	protected void buildQuery(Builder b, boolean compact) throws JsonException {
+		b.append("query ");
+		super.buildQuery(b, compact);
+	}	
 }

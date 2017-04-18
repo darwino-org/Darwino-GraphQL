@@ -13,11 +13,25 @@
 
 package com.darwino.graphql.client;
 
+import com.darwino.commons.json.JsonException;
+
 /**
  * GraphQL Query Request.
  * 
  * @author priand
  */
-public class GraphQLQuery extends GraphQLEntry {
+public class GMutation extends GEntry {
 	
+	public GMutation() {
+	}
+
+	public GMutation(String name) {
+		super(name);
+	}
+	
+	@Override
+	protected void buildQuery(Builder b, boolean compact) throws JsonException {
+		b.append("mutation ");
+		super.buildQuery(b, compact);
+	}	
 }
