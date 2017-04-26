@@ -22,6 +22,8 @@
 
 package com.darwino.graphql.query;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +32,7 @@ import com.darwino.commons.json.JsonArray;
 import com.darwino.commons.json.JsonException;
 import com.darwino.commons.json.JsonObject;
 import com.darwino.commons.services.HttpServiceError;
+import com.darwino.commons.util.io.StreamUtil;
 import com.darwino.graphql.GraphContext;
 
 import graphql.ExecutionResult;
@@ -42,16 +45,49 @@ import graphql.schema.GraphQLSchema;
  * 
  * @author Philippe Riand
  */
-public abstract class GraphQLSession {
+public abstract class GraphQLSession implements Closeable {
+	
+	private GraphQLSchema schema;
+	private GraphQueryFactory queryFactory;
+	private GraphContext context;
 	
 	public GraphQLSession() {
 	}
-	
-	public abstract GraphQLSchema getSchema() throws JsonException;
-	
-	public abstract GraphQueryFactory getQueryFactory() throws JsonException;
 
-	public abstract GraphContext getContext() throws JsonException;
+	public final GraphContext getContext() throws JsonException {
+		if(context==null) {
+			context = createContext();
+		}
+		return context;
+	}
+
+	public final GraphQLSchema getSchema() throws JsonException {
+		if(schema==null) {
+			schema = createSchema();
+		}
+		return schema;
+	}
+	
+	public final GraphQueryFactory getQueryFactory() throws JsonException {
+		if(queryFactory==null) {
+			queryFactory = createQueryFactory();
+		}
+		return queryFactory;
+	}
+	
+
+	@Override
+	public void close() throws IOException {
+		if(context!=null) {
+			StreamUtil.close(context);
+			context = null;
+		}
+	}
+	
+	protected abstract GraphContext createContext() throws JsonException;
+	protected abstract GraphQLSchema createSchema() throws JsonException;
+	protected abstract GraphQueryFactory createQueryFactory() throws JsonException;
+	
 	
 	/**
 	 * Utility to execute a predefined query.

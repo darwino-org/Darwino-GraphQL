@@ -47,10 +47,10 @@ public class GraphQLRestServiceFactory extends RestServiceFactory {
 		super(path);
 	}
 	
-	public GraphQLSession createSession(String contextName) throws JsonException {
+	public GraphQLSession createSession() throws JsonException {
 		GraphQLSessionFactory factory = Platform.getServiceUnchecked(GraphQLSessionFactory.class);
 		if(factory!=null) {
-			return factory.createSession(contextName);
+			return factory.createSession();
 		}
 		throw new JsonException(null,"Missing GraphQL session factory");
 	}

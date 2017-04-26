@@ -30,6 +30,7 @@ import com.darwino.commons.services.HttpService;
 import com.darwino.commons.services.HttpServiceContext;
 import com.darwino.commons.services.HttpServiceError;
 import com.darwino.commons.util.QuickSort;
+import com.darwino.commons.util.io.StreamUtil;
 import com.darwino.graphql.query.GraphQLSession;
 import com.darwino.graphql.query.GraphQueryFactory;
 
@@ -51,26 +52,29 @@ public class GraphQLQueryListService extends HttpService {
 		return factory;
 	}
 	
-	public GraphQLSession getSession(HttpServiceContext context) throws JsonException {
-		return factory.createSession(null);
+	public GraphQLSession createSession(HttpServiceContext context) throws JsonException {
+		return factory.createSession();
 	}
 	
 	@Override
 	public void service(HttpServiceContext context) {
 		try {
-			GraphQLSession session = getSession(context);
-
-			if(context.isGet()) {
-				JsonArray a = new JsonArray();
-				GraphQueryFactory qf = session.getQueryFactory();
-				if(qf!=null) {
-					Set<String> names = qf.getQueryNames();
-					a.addAll(names);
-					(new QuickSort.JavaList(a)).sort();
+			GraphQLSession session = createSession(context);
+			try {
+				if(context.isGet()) {
+					JsonArray a = new JsonArray();
+					GraphQueryFactory qf = session.getQueryFactory();
+					if(qf!=null) {
+						Set<String> names = qf.getQueryNames();
+						a.addAll(names);
+						(new QuickSort.JavaList(a)).sort();
+					}
+					context.emitJson(a);
+				} else {
+					throw HttpServiceError.errorUnsupportedMethod(context.getMethod());
 				}
-				context.emitJson(a);
-			} else {
-				throw HttpServiceError.errorUnsupportedMethod(context.getMethod());
+			} finally {
+				StreamUtil.close(session);
 			}
 		} catch(JsonException ex) {
 			throw HttpServiceError.error500(ex);

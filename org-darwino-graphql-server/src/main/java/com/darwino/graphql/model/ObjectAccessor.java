@@ -68,6 +68,21 @@ public abstract class ObjectAccessor<T> {
 	public T getValue() {
 		return value;
 	}
+
+	/**
+	 * Extract the name of a simple field.
+	 * A simple field path is of the form $.XXXX and then XXXX is returned
+	 * @param path the source path
+	 * @return the extracted field
+	 * @throws JsonException
+	 */
+	public String getSimpleField(JsonPath path) throws JsonException {
+		Object[] parts = path.getSimpleParts();
+		if(parts.length==1 && parts[0] instanceof String) {
+			return (String)parts[0];
+		}
+		return null;
+	}
 	
 	public abstract Object readValue(JsonPath path) throws JsonException;
 	public abstract List<?> readList(JsonPath path) throws JsonException;

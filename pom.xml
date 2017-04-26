@@ -12,6 +12,7 @@
 		<module>org-darwino-graphql-server</module>
 		<module>org-darwino-graphql-server-jsonstore</module>
 		<module>org-darwino-graphql-server-jsonstore-jsql</module>
+		<module>org-darwino-graphql-server-domino</module>
 		<module>graphql-example</module>
 	</modules>
 

@@ -1,0 +1,32 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.darwino</groupId>
+		<artifactId>graphql</artifactId>
+		<version>1.0.0-SNAPSHOT</version>
+	</parent>
+
+	<artifactId>org-darwino-graphql-server-domino</artifactId>
+	
+	<dependencies>
+		<dependency>
+			<groupId>com.darwino</groupId>
+			<artifactId>dwo-jsonstore</artifactId>
+			<version>${DARWINO_VERSION}</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.darwino</groupId>
+			<artifactId>org-darwino-graphql-server</artifactId>
+			<version>1.0.0-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>com.ibm.xsp</groupId>
+			<artifactId>com.ibm.notes.java.api.win32.linux</artifactId>
+			<version>9.0.1.20140404-1000</version>
+			<classifier>Notes</classifier>
+			<scope>provided</scope>
+		</dependency>
+	</dependencies>
+</project>

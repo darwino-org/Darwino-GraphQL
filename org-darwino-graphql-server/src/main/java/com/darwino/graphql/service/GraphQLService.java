@@ -35,6 +35,7 @@ import com.darwino.commons.services.HttpService;
 import com.darwino.commons.services.HttpServiceContext;
 import com.darwino.commons.services.HttpServiceError;
 import com.darwino.commons.util.StringUtil;
+import com.darwino.commons.util.io.StreamUtil;
 import com.darwino.graphql.GraphContext;
 import com.darwino.graphql.query.GraphQLSession;
 import com.darwino.graphql.query.GraphQuery;
@@ -65,41 +66,44 @@ public class GraphQLService extends HttpService {
 		return factory;
 	}
 	
-	public GraphQLSession getSession(HttpServiceContext context) throws JsonException {
-		return factory.createSession(null);
+	public GraphQLSession createSession(HttpServiceContext context) throws JsonException {
+		return factory.createSession();
 	}
 	
 	@Override
 	public void service(HttpServiceContext context) {
 		try {
-			GraphQLSession session = getSession(context);
-			
-			String queryName = context.getQueryParameterString("name");
-			if(StringUtil.isNotEmpty(queryName)) {
-				if(context.isGet()) {
-					GraphQueryFactory qf = session.getQueryFactory();
-					if(qf!=null) {
-						GraphQuery query = qf.getQuery(queryName);
-						if(query==null && queryName.endsWith(".graphql")) {
-							query = qf.getQuery(queryName.substring(0, queryName.length()-".graphql".length()));
+			GraphQLSession session = createSession(context);
+			try {
+				String queryName = context.getQueryParameterString("name");
+				if(StringUtil.isNotEmpty(queryName)) {
+					if(context.isGet()) {
+						GraphQueryFactory qf = session.getQueryFactory();
+						if(qf!=null) {
+							GraphQuery query = qf.getQuery(queryName);
+							if(query==null && queryName.endsWith(".graphql")) {
+								query = qf.getQuery(queryName.substring(0, queryName.length()-".graphql".length()));
+							}
+							if(query!=null) {
+								processRequest(context, session, query.loadQuery(), null, null);
+								return;
+							}
 						}
-						if(query!=null) {
-							processRequest(context, session, query.loadQuery(), null, null);
-							return;
-						}
+						throw HttpServiceError.errorNotFound(null,"GraphQL query {0} is not found",queryName);
+					} else {
+						throw HttpServiceError.errorUnsupportedMethod(context.getMethod());
 					}
-					throw HttpServiceError.errorNotFound(null,"GraphQL query {0} is not found",queryName);
 				} else {
-					throw HttpServiceError.errorUnsupportedMethod(context.getMethod());
+					if(context.isGet()) {
+						processGet(context,session);
+					} else if(context.isPost()) {
+						processPost(context,session);
+					} else {
+						throw HttpServiceError.errorUnsupportedMethod(context.getMethod());
+					}
 				}
-			} else {
-				if(context.isGet()) {
-					processGet(context,session);
-				} else if(context.isPost()) {
-					processPost(context,session);
-				} else {
-					throw HttpServiceError.errorUnsupportedMethod(context.getMethod());
-				}
+			} finally {
+				StreamUtil.close(session);
 			}
 		} catch(JsonException ex) {
 			throw HttpServiceError.error500(ex);

@@ -22,21 +22,36 @@
 
 package com.darwino.graphql;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+
+import com.darwino.commons.util.io.StreamUtil;
 
 /**
  * GraphQL execution context.
  * 
  * This is the context that is passed to the execution engine. 
+ * Note that the context should be closed after used. Its sub objects will be then closed
+ * if the implement Closeable.
  * 
  * @author Philippe Riand
  */
-public class GraphContext {
-
+public class GraphContext implements Closeable {
+	
 	private Map<Class<?>,Object> contexts = new HashMap<Class<?>,Object>();
 	
 	public GraphContext() {
+	}
+	
+	@Override
+	public void close() throws IOException {
+		for(Object c: contexts.values()) {
+			if(c instanceof Closeable) {
+				StreamUtil.close((Closeable)c);
+			}
+		}
 	}
 	
 	public Map<Class<?>,Object> getContexts() {

@@ -39,9 +39,8 @@ public interface GraphQLSessionFactory {
 	 * Multiple contexts can be available and selected from the contextName, although the null value is generally used when only
 	 * one context is available.
 	 * The session object has enough information to execute a GraphQL query.
-	 * @param contextName the graphql session context name- might be null
 	 * @return the session to use
 	 * @throws JsonException if the session cannot be created
 	 */
-	public GraphQLSession createSession(String contextName) throws JsonException;
+	public GraphQLSession createSession() throws JsonException;
 }
