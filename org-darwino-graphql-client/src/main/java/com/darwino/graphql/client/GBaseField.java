@@ -26,23 +26,24 @@ import com.darwino.commons.util.StringUtil;
  * 
  * @author priand
  */
-public class GEntry extends GObject {
+public abstract class GBaseField<T extends GBaseField<?>> extends GObject {
 	
 	private String name;
 	private Map<String,Object> attributes;
 	private List<GDirective> directives;
-	private List<GEntry> entries;
+	private List<GBaseField<?>> entries;
 	
-	public GEntry() {
+	public GBaseField() {
 	}
 
-	public GEntry(String name) {
+	public GBaseField(String name) {
 		name(name);
 	}
 
-	public GEntry name(String name) {
+	@SuppressWarnings("unchecked")
+	public T name(String name) {
 		this.name = name;
-		return this;
+		return (T)this;
 	}
 
 	public Map<String,Object> getAttributes() {
@@ -59,32 +60,74 @@ public class GEntry extends GObject {
 		return directives;
 	}
 
-	public List<GEntry> getEntries() {
+	public List<GBaseField<?>> getEntries() {
 		if(entries==null) {
-			entries = new ArrayList<GEntry>();
+			entries = new ArrayList<GBaseField<?>>();
 		}
 		return entries;
 	}
 
-	public GEntry attribute(String name, Object value) {
+	@SuppressWarnings("unchecked")
+	public T attribute(String name, Object value) {
 		getAttributes().put(name, value);
-		return this;
+		return (T)this;
 	}
 
-	public GEntry directive(GDirective directive) {
+	@SuppressWarnings("unchecked")
+	public T directive(GDirective directive) {
 		getDirectives().add(directive);
-		return this;
+		return (T)this;
 	}
 
-	public GEntry entry(GEntry entry) {
+	@SuppressWarnings("unchecked")
+	public T field(GBaseField<?> entry) {
 		getEntries().add(entry);
-		return this;
+		return (T)this;
+	}
+
+	@SuppressWarnings("unchecked")
+	public T field(String fieldName) {
+		getEntries().add(new GField(fieldName));
+		return (T)this;
+	}
+
+	@SuppressWarnings("unchecked")
+	public T field(String alias, String fieldName) {
+		getEntries().add(new GField(alias,fieldName));
+		return (T)this;
+	}
+	
+	//
+	// Schemaless extensions
+	//
+	@SuppressWarnings("unchecked")
+	public T stringField(String alias, String jsonPath) {
+		getEntries().add(new GField(alias,"string").attribute("path", jsonPath));
+		return (T)this;
+	}
+	@SuppressWarnings("unchecked")
+	public T intField(String alias, String jsonPath) {
+		getEntries().add(new GField(alias,"int").attribute("path", jsonPath));
+		return (T)this;
+	}
+	@SuppressWarnings("unchecked")
+	public T booleanField(String alias, String jsonPath) {
+		getEntries().add(new GField(alias,"boolean").attribute("path", jsonPath));
+		return (T)this;
 	}
 	
 	@Override
 	protected void buildQuery(Builder b, boolean compact) throws JsonException {
 		if(StringUtil.isEmpty(name)) {
 			throw new JsonException(null,"Graph entry is missing a name");
+		}
+		String alias = getAlias();
+		if(StringUtil.isNotEmpty(alias)) {
+			b.append(alias);
+			b.append(':');
+			if(!compact) {
+				b.append(' ');
+			}
 		}
 		b.append(name);
 		if(directives!=null && !directives.isEmpty()) {
@@ -96,20 +139,29 @@ public class GEntry extends GObject {
 		}
 		if(attributes!=null && !attributes.isEmpty()) {
 			b.append("(");
-			b.emitObjectContent(attributes);
+			b.emitObjectContent(attributes,compact);
 			b.append(")");
 		}
 		if(entries!=null && !entries.isEmpty()) {
-			b.append(" {");
+			if(!compact) {
+				b.append(' ');
+			}
+			b.append('{');
 			if(!compact) { b.incIndent(); }
 			int count = entries.size();
 			for(int i=0; i<count; i++) {
+				if(i>0) {
+					b.append(',');
+				}
 				if(!compact) b.nl();
-				GEntry e = entries.get(i);
+				GBaseField<?> e = entries.get(i);
 				e.buildQuery(b, compact);
 			}
 			if(!compact) { b.decIndent(); b.nl(); }
 			b.append("}");
 		}
+	}
+	protected String getAlias() {
+		return null;
 	}
 }

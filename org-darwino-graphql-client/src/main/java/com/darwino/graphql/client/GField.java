@@ -13,14 +13,14 @@
 
 package com.darwino.graphql.client;
 
-import com.darwino.commons.json.JsonException;
-
 /**
- * GraphQL Query Request.
+ * Base class for a GraphQL Entry.
  * 
  * @author priand
  */
-public class GField extends GEntry {
+public class GField extends GBaseField<GField> {
+
+	private String alias;
 	
 	public GField() {
 	}
@@ -28,10 +28,19 @@ public class GField extends GEntry {
 	public GField(String name) {
 		super(name);
 	}
+
+	public GField(String alias, String name) {
+		super(name);
+		this.alias = alias;
+	}
 	
+	public GField alias(String alias) {
+		this.alias = alias;
+		return this;
+	}
 	@Override
-	protected void buildQuery(Builder b, boolean compact) throws JsonException {
-		b.append("query ");
-		super.buildQuery(b, compact);
-	}	
+	protected String getAlias() {
+		return alias;
+	}
+
 }

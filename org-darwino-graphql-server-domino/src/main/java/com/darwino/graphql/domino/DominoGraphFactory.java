@@ -22,6 +22,8 @@
 
 package com.darwino.graphql.domino;
 
+import static graphql.Scalars.GraphQLBoolean;
+import static graphql.Scalars.GraphQLInt;
 import static graphql.Scalars.GraphQLString;
 
 import java.util.ArrayList;
@@ -30,17 +32,19 @@ import java.util.Vector;
 
 import com.darwino.commons.json.JsonArray;
 import com.darwino.commons.json.JsonException;
+import com.darwino.commons.json.JsonJavaFactory;
+import com.darwino.commons.json.JsonObject;
 import com.darwino.commons.json.JsonUtil;
 import com.darwino.commons.json.jsonpath.JsonPath;
 import com.darwino.commons.util.StringUtil;
 import com.darwino.graphql.GraphContext;
 import com.darwino.graphql.GraphFactory;
-import com.darwino.graphql.factories.DynamicObjectGraphFactory;
 import com.darwino.graphql.model.BaseDataFetcher;
 import com.darwino.graphql.model.ObjectAccessor;
 import com.darwino.graphql.model.ObjectDataFetcher;
 
 import graphql.GraphQLException;
+import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
 import graphql.schema.GraphQLArgument;
 import graphql.schema.GraphQLFieldDefinition;
@@ -53,6 +57,7 @@ import lotus.domino.Document;
 import lotus.domino.NotesException;
 import lotus.domino.Session;
 import lotus.domino.View;
+import lotus.domino.ViewColumn;
 import lotus.domino.ViewEntry;
 import lotus.domino.ViewEntryCollection;
 
@@ -91,6 +96,7 @@ public class DominoGraphFactory extends GraphFactory {
 		}
 		
 		public Database getDatabase(String server, String database) throws NotesException, GraphQLException {
+			Database db = null;
 			if(StringUtil.isEmpty(server)) {
 				if(StringUtil.isEmpty(database)) {
 					if(StringUtil.isEmpty(defaultDatabase)) {
@@ -99,13 +105,17 @@ public class DominoGraphFactory extends GraphFactory {
 					database  = defaultDatabase;
 				}
 				String localPath = getLocalDatabasePath(database);
-				return session.getDatabase(null, localPath);
+				db = session.getDatabase(null, localPath, false);
 			} else {
 				if(StringUtil.isEmpty(database)) {
 					throw new GraphQLException(StringUtil.format("Missing Domino database reference"));
 				}
-				return session.getDatabase(server, database);
+				db = session.getDatabase(server, database, false);
 			}
+			if(db==null) {
+				throw new GraphQLException(StringUtil.format("Cannot open database {0},{1}",server,database));
+			}
+			return db;
 		}
 		
 		protected String getLocalDatabasePath(String database) {
@@ -115,37 +125,25 @@ public class DominoGraphFactory extends GraphFactory {
 
 	public static enum SPECIAL_FIELD {
 	    // Common attributes names
-		UNID("_unid"), //$NON-NLS-1$   
-		NOTEID("_noteid"), //$NON-NLS-1$
+		UNID("unid"), //$NON-NLS-1$   
+		NOTEID("noteId"), //$NON-NLS-1$
         // View attributes names
-    	ENTRYID("_entryid"), //$NON-NLS-1$
-    	POSITION("_position"), //$NON-NLS-1$
-    	READ("_read"), //$NON-NLS-1$
-    	SIBLINGS("_siblings"), //$NON-NLS-1$
-    	DESCENDANTS("_descendants"), //$NON-NLS-1$
-    	CHILDREN("_children"), //$NON-NLS-1$
-    	INDENT("_indent"), //$NON-NLS-1$
-    	CATEGORY("_category"), //$NON-NLS-1$
-    	RESPONSE("_response"), //$NON-NLS-1$
+    	POSITION("position"), //$NON-NLS-1$
+    	READ("read"), //$NON-NLS-1$
+    	SIBLINGCOUNT("siblingCount"), //$NON-NLS-1$
+    	DESCENDANTCOUNT("descendantCount"), //$NON-NLS-1$
+    	CHILDCOUNT("childCount"), //$NON-NLS-1$
+    	INDENTLEVEL("indentLevel"), //$NON-NLS-1$
+    	ISCATEGORY("isCategory"), //$NON-NLS-1$
     	// Document attributes names
-    	PARENTID("_parentid"), //$NON-NLS-1$
-    	CREATED("_created"), //$NON-NLS-1$
-    	MODIFIED("_modified"), //$NON-NLS-1$
-    	ACCESSED("_accessed") //$NON-NLS-1$
+    	PARENTUNID("parentUnid"), //$NON-NLS-1$
+    	CREATED("created"), //$NON-NLS-1$
+    	LASTMODIFIED("lastModified"), //$NON-NLS-1$
+    	LASTACCESSED("lastAccessed") //$NON-NLS-1$
 		;
 		private String name;
 		private SPECIAL_FIELD(String name) {
 			this.name = name;
-		}
-		public static SPECIAL_FIELD getSpecialField(String field) throws JsonException {
-			if(field.startsWith("_")) {
-				for( SPECIAL_FIELD f: SPECIAL_FIELD.values() ) {
-					if(f.name.equals(field)) {
-						return f;
-					}
-				}
-			}
-			return null;
 		}
 	};	
 	
@@ -158,101 +156,91 @@ public class DominoGraphFactory extends GraphFactory {
 	@Override
 	public void createTypes(Builder builders) {
 		{
-			// View entries
+			// Documents
 			GraphQLObjectType.Builder docBuilder = GraphQLObjectType.newObject()
 				.name(TYPE_DOCUMENT)
 				.field(GraphQLFieldDefinition.newFieldDefinition()
-					.name(SPECIAL_FIELD.UNID.name)
-					.type(GraphQLString)
-					.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SPECIAL_FIELD.UNID.name,JsonUtil.TYPE_STRING))
+						.name(SPECIAL_FIELD.UNID.name)
+						.type(GraphQLString)
+						.dataFetcher(new DocumentSystemValueFetcher(SPECIAL_FIELD.UNID))
 					)
 				.field(GraphQLFieldDefinition.newFieldDefinition()
 						.name(SPECIAL_FIELD.NOTEID.name)
 						.type(GraphQLString)
-						.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SPECIAL_FIELD.NOTEID.name,JsonUtil.TYPE_STRING))
+						.dataFetcher(new DocumentSystemValueFetcher(SPECIAL_FIELD.NOTEID))
 					)
 				.field(GraphQLFieldDefinition.newFieldDefinition()
-						.name(SPECIAL_FIELD.PARENTID.name)
+						.name(SPECIAL_FIELD.PARENTUNID.name)
 						.type(GraphQLString)
-						.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SPECIAL_FIELD.PARENTID.name,JsonUtil.TYPE_STRING))
+						.dataFetcher(new DocumentSystemValueFetcher(SPECIAL_FIELD.PARENTUNID))
 					)
 				.field(GraphQLFieldDefinition.newFieldDefinition()
 						.name(SPECIAL_FIELD.CREATED.name)
 						.type(GraphQLString)
-						.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SPECIAL_FIELD.CREATED.name,JsonUtil.TYPE_STRING))
+						.dataFetcher(new DocumentSystemValueFetcher(SPECIAL_FIELD.CREATED))
 					)
 				.field(GraphQLFieldDefinition.newFieldDefinition()
-						.name(SPECIAL_FIELD.MODIFIED.name)
+						.name(SPECIAL_FIELD.LASTMODIFIED.name)
 						.type(GraphQLString)
-						.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SPECIAL_FIELD.MODIFIED.name,JsonUtil.TYPE_STRING))
+						.dataFetcher(new DocumentSystemValueFetcher(SPECIAL_FIELD.LASTMODIFIED))
 					)
 				.field(GraphQLFieldDefinition.newFieldDefinition()
-						.name(SPECIAL_FIELD.ACCESSED.name)
+						.name(SPECIAL_FIELD.LASTACCESSED.name)
 						.type(GraphQLString)
-						.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SPECIAL_FIELD.ACCESSED.name,JsonUtil.TYPE_STRING))
+						.dataFetcher(new DocumentSystemValueFetcher(SPECIAL_FIELD.LASTACCESSED))
 					)
 			;
 			builders.addDynamicFields(docBuilder);
 			builders.put(TYPE_DOCUMENT,docBuilder);
 		}
 		{
-			// Documents
+			// View entries
 			GraphQLObjectType.Builder entBuilder = GraphQLObjectType.newObject()
 				.name(TYPE_ENTRY)
 				.field(GraphQLFieldDefinition.newFieldDefinition()
 						.name(SPECIAL_FIELD.UNID.name)
 						.type(GraphQLString)
-						.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SPECIAL_FIELD.UNID.name,JsonUtil.TYPE_STRING))
+						.dataFetcher(new ViewEntrySystemValueFetcher(SPECIAL_FIELD.UNID))
 					)
 				.field(GraphQLFieldDefinition.newFieldDefinition()
 						.name(SPECIAL_FIELD.NOTEID.name)
 						.type(GraphQLString)
-						.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SPECIAL_FIELD.NOTEID.name,JsonUtil.TYPE_STRING))
-					)
-				.field(GraphQLFieldDefinition.newFieldDefinition()
-						.name(SPECIAL_FIELD.ENTRYID.name)
-						.type(GraphQLString)
-						.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SPECIAL_FIELD.ENTRYID.name,JsonUtil.TYPE_STRING))
+						.dataFetcher(new ViewEntrySystemValueFetcher(SPECIAL_FIELD.NOTEID))
 					)
 				.field(GraphQLFieldDefinition.newFieldDefinition()
 						.name(SPECIAL_FIELD.POSITION.name)
 						.type(GraphQLString)
-						.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SPECIAL_FIELD.POSITION.name,JsonUtil.TYPE_STRING))
+						.dataFetcher(new ViewEntrySystemValueFetcher(SPECIAL_FIELD.POSITION))
 					)
 				.field(GraphQLFieldDefinition.newFieldDefinition()
 						.name(SPECIAL_FIELD.READ.name)
-						.type(GraphQLString)
-						.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SPECIAL_FIELD.READ.name,JsonUtil.TYPE_STRING))
+						.type(GraphQLBoolean)
+						.dataFetcher(new ViewEntrySystemValueFetcher(SPECIAL_FIELD.READ))
 					)
 				.field(GraphQLFieldDefinition.newFieldDefinition()
-						.name(SPECIAL_FIELD.SIBLINGS.name)
-						.type(GraphQLString)
-						.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SPECIAL_FIELD.SIBLINGS.name,JsonUtil.TYPE_STRING))
+						.name(SPECIAL_FIELD.SIBLINGCOUNT.name)
+						.type(GraphQLInt)
+						.dataFetcher(new ViewEntrySystemValueFetcher(SPECIAL_FIELD.SIBLINGCOUNT))
 					)
 				.field(GraphQLFieldDefinition.newFieldDefinition()
-						.name(SPECIAL_FIELD.DESCENDANTS.name)
-						.type(GraphQLString)
-						.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SPECIAL_FIELD.DESCENDANTS.name,JsonUtil.TYPE_STRING))
+						.name(SPECIAL_FIELD.DESCENDANTCOUNT.name)
+						.type(GraphQLInt)
+						.dataFetcher(new ViewEntrySystemValueFetcher(SPECIAL_FIELD.DESCENDANTCOUNT))
 					)
 				.field(GraphQLFieldDefinition.newFieldDefinition()
-						.name(SPECIAL_FIELD.CHILDREN.name)
-						.type(GraphQLString)
-						.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SPECIAL_FIELD.CHILDREN.name,JsonUtil.TYPE_STRING))
+						.name(SPECIAL_FIELD.CHILDCOUNT.name)
+						.type(GraphQLInt)
+						.dataFetcher(new ViewEntrySystemValueFetcher(SPECIAL_FIELD.CHILDCOUNT))
 					)
 				.field(GraphQLFieldDefinition.newFieldDefinition()
-						.name(SPECIAL_FIELD.INDENT.name)
-						.type(GraphQLString)
-						.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SPECIAL_FIELD.INDENT.name,JsonUtil.TYPE_STRING))
+						.name(SPECIAL_FIELD.INDENTLEVEL.name)
+						.type(GraphQLInt)
+						.dataFetcher(new ViewEntrySystemValueFetcher(SPECIAL_FIELD.INDENTLEVEL))
 					)
 				.field(GraphQLFieldDefinition.newFieldDefinition()
-						.name(SPECIAL_FIELD.CATEGORY.name)
-						.type(GraphQLString)
-						.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SPECIAL_FIELD.CATEGORY.name,JsonUtil.TYPE_STRING))
-					)
-				.field(GraphQLFieldDefinition.newFieldDefinition()
-						.name(SPECIAL_FIELD.RESPONSE.name)
-						.type(GraphQLString)
-						.dataFetcher(new DynamicObjectGraphFactory.ValueFetcher(SPECIAL_FIELD.RESPONSE.name,JsonUtil.TYPE_STRING))
+						.name(SPECIAL_FIELD.ISCATEGORY.name)
+						.type(GraphQLBoolean)
+						.dataFetcher(new ViewEntrySystemValueFetcher(SPECIAL_FIELD.ISCATEGORY))
 					)
 			;
 			builders.addDynamicFields(entBuilder);
@@ -270,25 +258,25 @@ public class DominoGraphFactory extends GraphFactory {
 					.dataFetcher(new DocumentFetcher())
 			)
 			.field(GraphQLFieldDefinition.newFieldDefinition()
-					.name("ViewEntry")
+					.name("DominoViewEntry")
 					.argument(ViewEntryAccessor.getArguments())
 					.type(new GraphQLTypeReference(TYPE_ENTRY))
 					.dataFetcher(new ViewEntryFetcher())
 			)
 			.field(GraphQLFieldDefinition.newFieldDefinition()
-					.name("ViewEntries")
+					.name("DominoViewEntries")
 					.argument(ViewEntryAccessor.getArguments())
 					.type(new GraphQLList(new GraphQLTypeReference(TYPE_ENTRY)))
 					.dataFetcher(new ViewEntriesFetcher())
 			)
 			.field(GraphQLFieldDefinition.newFieldDefinition()
-					.name("ViewDocument")
+					.name("DominoViewDocument")
 					.argument(ViewEntryAccessor.getArguments())
 					.type(new GraphQLTypeReference(TYPE_DOCUMENT))
 					.dataFetcher(new ViewDocumentFetcher())
 			)
 			.field(GraphQLFieldDefinition.newFieldDefinition()
-					.name("ViewDocuments")
+					.name("DominoViewDocuments")
 					.argument(ViewEntryAccessor.getArguments())
 					.type(new GraphQLList(new GraphQLTypeReference(TYPE_DOCUMENT)))
 					.dataFetcher(new ViewDocumentsFetcher())
@@ -303,39 +291,40 @@ public class DominoGraphFactory extends GraphFactory {
 	//
 	/////////////////////////////////////////////////////////////////////////////////
 
+	private static Object convertFromDomino(Object val) throws JsonException, NotesException {
+		if(val instanceof String || val instanceof Number || val instanceof Boolean) {
+			return val;
+		}
+		if(val instanceof DateTime) {
+			DateTime dt = (DateTime)val;
+			String s = JsonUtil.dateToString(dt.toJavaDate());
+			dt.recycle();
+			return s;
+		}
+		return null;
+	}
+	private static Object convertVectorFromDomino(Vector<?> val) throws JsonException, NotesException {
+		if(val!=null) {
+			if(val.size()==1) {
+				return convertFromDomino(val.get(0));
+			}
+			if(val.size()>=2) {
+				JsonArray a = new JsonArray();
+				for(int i=0; i<val.size(); i++) {
+					a.add(convertFromDomino(val.get(i)));
+				}
+				return a;
+			}
+			
+		}
+		return null;
+	}
+	
 	public static abstract class DominoAccessor<T> extends ObjectAccessor<T> {
 		public DominoAccessor(DataFetchingEnvironment env, T value) {
 			super(env,value);
 		}
 		
-		protected Object convertFromDomino(Object val) throws JsonException, NotesException {
-			if(val instanceof String || val instanceof Number || val instanceof Boolean) {
-				return val;
-			}
-			if(val instanceof DateTime) {
-				DateTime dt = (DateTime)val;
-				String s = JsonUtil.dateToString(dt.toJavaDate());
-				dt.recycle();
-				return s;
-			}
-			return null;
-		}
-		protected Object convertVectorFromDomino(Vector<?> val) throws JsonException, NotesException {
-			if(val!=null) {
-				if(val.size()==1) {
-					return convertFromDomino(val.get(0));
-				}
-				if(val.size()>=2) {
-					JsonArray a = new JsonArray();
-					for(int i=0; i<val.size(); i++) {
-						a.add(convertFromDomino(val.get(i)));
-					}
-					return a;
-				}
-				
-			}
-			return null;
-		}
 		@Override
 		public List<?> readList(JsonPath path) throws JsonException {
 			Object o = readValue(path);
@@ -343,6 +332,31 @@ public class DominoGraphFactory extends GraphFactory {
 		}
 	}
 	
+	public static class DocumentSystemValueFetcher implements DataFetcher<Object> {
+		private SPECIAL_FIELD field;
+		public DocumentSystemValueFetcher(SPECIAL_FIELD field) {
+			this.field = field;
+		}
+		@Override
+		public Object get(DataFetchingEnvironment environment) {
+			try {
+				Document doc = ((DocumentAccessor)environment.getSource()).getValue();
+				switch(field) {
+				    // Common attributes names
+					case UNID:				return convertFromDomino(doc.getUniversalID());   
+					case NOTEID:			return convertFromDomino(doc.getNoteID());
+			    	// Document attributes names
+					case PARENTUNID:		return convertFromDomino(doc.getParentDocumentUNID());
+					case CREATED:			return convertFromDomino(JsonUtil.dateToString(doc.getCreated().toJavaDate()));
+					case LASTMODIFIED:		return convertFromDomino(JsonUtil.dateToString(doc.getLastModified().toJavaDate()));
+					case LASTACCESSED:		return convertFromDomino(JsonUtil.dateToString(doc.getLastAccessed().toJavaDate()));
+					default:		throw new JsonException(null,"The system field {0} is invalid in this context", field);
+				}
+			} catch(Exception ex) {
+				throw new GraphQLException(ex);
+			}
+		}
+	}
 	public static class DocumentAccessor extends DominoAccessor<Document> {
 		
 		public DocumentAccessor(DataFetchingEnvironment env, Document document) {
@@ -355,23 +369,7 @@ public class DominoGraphFactory extends GraphFactory {
 				if(simpleField==null) {
 					throw new JsonException(null,"The path {0} does not reference a simple field",path);
 				}
-	
-				SPECIAL_FIELD sysField = SPECIAL_FIELD.getSpecialField(simpleField);
-				if(sysField!=null) {
-					switch(sysField) {
-					    // Common attributes names
-						case UNID:			return convertFromDomino(getValue().getUniversalID());   
-						case NOTEID:		return convertFromDomino(getValue().getNoteID());
-				    	// Document attributes names
-						case PARENTID:		return convertFromDomino(getValue().getParentDocumentUNID());
-						case CREATED:		return convertFromDomino(getValue().getCreated().toJavaDate());
-						case MODIFIED:		return convertFromDomino(getValue().getLastModified().toJavaDate());
-						case ACCESSED:		return convertFromDomino(getValue().getLastAccessed().toJavaDate());
-						default:		throw new JsonException(null,"The system field {0} is invalid in this context", path);
-					}
-				} else {
-					return convertVectorFromDomino(getValue().getItemValue(simpleField));
-				}
+				return convertVectorFromDomino(getValue().getItemValue(simpleField));
 			} catch(NotesException ex) {
 				throw new JsonException(ex);
 			}
@@ -381,28 +379,70 @@ public class DominoGraphFactory extends GraphFactory {
 			args.add(serverArgument);
 			args.add(databaseArgument);
 			args.add(unidArgument);
-			args.add(idArgument);
+			args.add(noteIdArgument);
+			// Future extension for a collection of documents?
+			// Another solution is to have a "children" property at the document level
+			//args.add(parentUnidArgument);
 			return args;
 		}
 	}
 
-	public static class ViewEntryAccessor extends DominoAccessor<ViewEntry> {
-		private Vector<?> values;
-		public ViewEntryAccessor(DataFetchingEnvironment env, ViewEntry entry) {
-			super(env,entry);
+	public static class ViewEntrySystemValueFetcher implements DataFetcher<Object> {
+		private SPECIAL_FIELD field;
+		public ViewEntrySystemValueFetcher(SPECIAL_FIELD field) {
+			this.field = field;
 		}
-		// Can this be optimized?
-		private Object getColumnValue(String name) throws NotesException {
-			if(values==null) {
-				this.values = getValue().getColumnValues();
-			}
-			View view = (View)getValue().getParent();
-			Vector<?> names = view.getColumnNames();
-			for(int i=0; i<names.size(); i++) {
-				if(StringUtil.equals((String)names.get(i), name)) {
-					return values.get(i);
+		@Override
+		public Object get(DataFetchingEnvironment environment) {
+			try {
+				ViewEntry ve = ((ViewEntryAccessor)environment.getSource()).getValue();
+				switch(field) {
+				    // Common attributes names
+					case UNID:				return convertFromDomino(ve.getUniversalID());   
+					case NOTEID:			return convertFromDomino(ve.getNoteID());
+			        // View attributes names
+					case POSITION:			return convertFromDomino(ve.getPosition('.'));
+					case READ:				return convertFromDomino(ve.getRead());
+					case SIBLINGCOUNT:		return convertFromDomino(ve.getSiblingCount());
+					case DESCENDANTCOUNT:	return convertFromDomino(ve.getDescendantCount());
+					case CHILDCOUNT:		return convertFromDomino(ve.getChildCount());
+					case INDENTLEVEL:		return convertFromDomino(ve.getIndentLevel());
+					case ISCATEGORY:		return convertFromDomino(ve.isCategory());
+					default:				throw new JsonException(null,"The system field {0} is invalid in this context", field);
 				}
+			} catch(Exception ex) {
+				throw new GraphQLException(ex);
 			}
+		}
+	}
+	public static class ViewEntryAccessor extends DominoAccessor<ViewEntry> {
+		@SuppressWarnings("unused")
+		private ViewNav viewNav;
+		private Vector<ViewColumn> columns;
+		private Vector<Object> values;
+		@SuppressWarnings("unchecked")
+		public ViewEntryAccessor(DataFetchingEnvironment env, ViewNav viewNav, ViewEntry entry) throws NotesException {
+			super(env,entry);
+			this.viewNav = viewNav;
+			this.columns = viewNav.view.getColumns();
+			this.values = entry.getColumnValues();
+		}
+		private Object getColumnValue(String name) throws NotesException {
+			int sz = columns.size();
+			// Programmatic name
+	        for(int i=0; i<sz; i++) {
+	            String s = columns.get(i).getItemName();
+	            if(name.equalsIgnoreCase(s)) {
+	                return values.get(i);
+	            }
+	        }
+	        // The column title
+	        for(int i=0; i<sz; i++) {
+	            String s = columns.get(i).getTitle();
+	            if(name.equalsIgnoreCase(s)) {
+	                return values.get(i);
+	            }
+	        }
 			return null;
 		}
 		@Override
@@ -412,34 +452,7 @@ public class DominoGraphFactory extends GraphFactory {
 				if(simpleField==null) {
 					throw new JsonException(null,"The path {0} does not reference a simple field",path);
 				}
-				
-				SPECIAL_FIELD sysField = SPECIAL_FIELD.getSpecialField(simpleField);
-				if(sysField!=null) {
-					switch(sysField) {
-					    // Common attributes names
-						case UNID:				return convertFromDomino(getValue().getUniversalID());   
-						case NOTEID:			return convertFromDomino(getValue().getNoteID());
-				        // View attributes names
-						case ENTRYID:			return convertFromDomino(getValue().getPosition('.')+'-'+getValue().getUniversalID());
-						case POSITION:			return convertFromDomino(getValue().getPosition('.'));
-						case READ:				return convertFromDomino(getValue().getRead());
-						case SIBLINGS:			return convertFromDomino(getValue().getSiblingCount());
-						case DESCENDANTS:		return convertFromDomino(getValue().getDescendantCount());
-						case CHILDREN:			return convertFromDomino(getValue().getChildCount());
-						case INDENT:			return convertFromDomino(getValue().getIndentLevel());
-						case CATEGORY:			return convertFromDomino(getValue().isCategory());
-						case RESPONSE: {			                
-												Object op = getValue().getParent();
-								                if(null != op && op instanceof ViewEntry){
-								                    ViewEntry parent = (ViewEntry)op;
-								                    return parent.isDocument();
-								                }
-						}
-						default:		throw new JsonException(null,"The system field {0} is invalid in this context", path);
-					}
-				} else {
-					return convertFromDomino(getColumnValue(simpleField));
-				}
+				return convertFromDomino(getColumnValue(simpleField));
 			} catch(NotesException ex) {
 				throw new JsonException(ex);
 			}
@@ -449,15 +462,12 @@ public class DominoGraphFactory extends GraphFactory {
 			List<GraphQLArgument> args = new ArrayList<GraphQLArgument>();
 			args.add(serverArgument);
 			args.add(databaseArgument);
+			args.add(nameArgument);
 			args.add(ftSearchArgument);
-			args.add(parentIdArgument);
 			args.add(keyArgument);
+			args.add(keysArgument);
 			args.add(skipArgument);
 			args.add(limitArgument);
-			args.add(p0Argument);
-			args.add(p1Argument);
-			args.add(p2Argument);
-			args.add(p3Argument);
 			return args;
 		}
 	}
@@ -485,16 +495,16 @@ public class DominoGraphFactory extends GraphFactory {
 					throw new GraphQLException(StringUtil.format("Missing Domino session in the database context"));
 				}
 				
-				String server = getStringParameter(environment,"server");
-				String database = getStringParameter(environment,"database");
+				String server = getStringParameter(environment,serverArgument.getName());
+				String database = getStringParameter(environment,databaseArgument.getName());
 
 				Document doc = null;
 				
-				String unid = getStringParameter(environment,"unid");
+				String unid = getStringParameter(environment,unidArgument.getName());
 				if(StringUtil.isNotEmpty(unid)) {
 					doc = ctx.getDatabase(server,database).getDocumentByUNID(unid);
 				} else {
-					String id = getStringParameter(environment,"id");
+					String id = getStringParameter(environment,noteIdArgument.getName());
 					doc = ctx.getDatabase(server,database).getDocumentByID(id);
 				}
 				
@@ -516,48 +526,97 @@ public class DominoGraphFactory extends GraphFactory {
 	/////////////////////////////////////////////////////////////////////////////////
 
 	private static abstract class ViewNav {
-		public static final int DEFAULT_LIMIT		= 100;
-		public static final int MAX_LIMIT			= 500;
 		
 		View view;
+		boolean documents;
 		int skip;
 		int limit;
-		public ViewNav(View view, int skip, int limit) {
+		String search;
+		public ViewNav(View view) {
 			this.view = view;
-			this.skip = skip;
-			this.limit = Math.max(MAX_LIMIT,limit>0 ? limit : DEFAULT_LIMIT);
 		}
-		public abstract List<ViewEntryAccessor> entries(DataFetchingEnvironment environment) throws NotesException;
-		public abstract List<DocumentAccessor> documents(DataFetchingEnvironment environment) throws NotesException;
+		@SuppressWarnings({ "unchecked", "rawtypes" })
+		protected void addEntry(DataFetchingEnvironment environment, List<?> list, ViewEntry ve) throws NotesException {
+			if(documents) {
+				((List)list).add(new DocumentAccessor(environment,ve.getDocument()));
+			} else {
+				((List)list).add(new ViewEntryAccessor(environment,this,ve));
+			}
+		}
+			
+		public List<?> browse(DataFetchingEnvironment environment) throws NotesException {
+			if(documents) {
+				final List<DocumentAccessor> documents = new ArrayList<DocumentAccessor>();
+				browse(environment, documents);
+				return documents;
+			} else {
+				final List<ViewEntryAccessor> entries = new ArrayList<ViewEntryAccessor>();
+				browse(environment, entries);
+				return entries;
+			}
+		}
+		
+		public abstract void browse(DataFetchingEnvironment environment, List<?> entries) throws NotesException;
 	}
 	private static class ViewNavAll extends ViewNav {
-		public ViewNavAll(View view, int skip, int limit) {
-			super(view, skip, limit);
+		public ViewNavAll(View view) {
+			super(view);
 		}
 		@Override
-		public List<ViewEntryAccessor> entries(DataFetchingEnvironment environment) throws NotesException {
-			final List<ViewEntryAccessor> entries = new ArrayList<ViewEntryAccessor>();
-			ViewEntryCollection c=view.getAllEntries();
+		public void browse(DataFetchingEnvironment environment, List<?> entries) throws NotesException {
+			ViewEntryCollection c=getViewEntryCollection();
+			if(StringUtil.isNotEmpty(search)) {
+				c.FTSearch(search);
+			}
 			for(ViewEntry ve=c.getFirstEntry(); ve!=null && entries.size()<limit; ve=c.getNextEntry()) {
 				if(skip>0) {
 					skip--; continue;
 				}
-				entries.add(new ViewEntryAccessor(environment,ve));
+				addEntry(environment, entries, ve);
 			}
-			return entries;
+		}
+		protected ViewEntryCollection getViewEntryCollection() throws NotesException {
+			return view.getAllEntries();
+		}
+	}
+	private static class ViewNavKey extends ViewNavAll {
+		private String key;
+		public ViewNavKey(View view, String key) {
+			super(view);
+			this.key = key;
 		}
 		@Override
-		public List<DocumentAccessor> documents(DataFetchingEnvironment environment) throws NotesException {
-			final List<DocumentAccessor> documents = new ArrayList<DocumentAccessor>();
-			ViewEntryCollection c=view.getAllEntries();
-			for(ViewEntry ve=c.getFirstEntry(); ve!=null && documents.size()<limit; ve=c.getNextEntry()) {
-				documents.add(new DocumentAccessor(environment,ve.getDocument()));
+		protected ViewEntryCollection getViewEntryCollection() throws NotesException {
+			return view.getAllEntriesByKey(key);
+		}
+	}
+	private static class ViewNavKeys extends ViewNavAll {
+		@SuppressWarnings("rawtypes")
+		private Vector keys = new Vector();
+		@SuppressWarnings("unchecked")
+		public ViewNavKeys(View view, String _keys) throws JsonException {
+			super(view);
+			Object val = JsonJavaFactory.instance.fromJson(_keys);
+			if(val instanceof JsonArray) {
+				JsonArray a = (JsonArray)val;
+				for(int i=0; i<a.length(); i++) {
+					keys.add(a.get(i));
+				}
+			} else if(val instanceof JsonObject) {
+				throw new JsonException(null,"Object parameter is not allowed");
+			} else {
+				keys.add(val);
 			}
-			return documents;
+		}
+		@Override
+		protected ViewEntryCollection getViewEntryCollection() throws NotesException {
+			return view.getAllEntriesByKey(keys);
 		}
 	}
 	
 	public static abstract class BaseViewFetcher<T> extends BaseDataFetcher<T> {
+		public static final int DEFAULT_LIMIT		= 100;
+		public static final int MAX_LIMIT			= 500;
 		
 		public BaseViewFetcher() {
 		}
@@ -572,35 +631,42 @@ public class DominoGraphFactory extends GraphFactory {
 					throw new GraphQLException(StringUtil.format("Missing Domino session in the database context"));
 				}
 				
-				String server = getStringParameter(environment,"server");
-				String database = getStringParameter(environment,"database");
+				String server = getStringParameter(environment,serverArgument.getName());
+				String database = getStringParameter(environment,databaseArgument.getName());
 
-				String view = getStringParameter(environment,"view");
-				if(view==null) {
-					throw new GraphQLException(StringUtil.format("Missing 'view' parameter in the query"));
+				String viewName = getStringParameter(environment,nameArgument.getName());
+				if(viewName==null) {
+					throw new GraphQLException(StringUtil.format("Missing 'name' parameter in the query"));
 				}
 
-				View v = ctx.getDatabase(server,database).getView(view);
-				int skip = 0;
-				int limit = 0;
-				ViewNav viewNav = new ViewNavAll(v, skip, limit);
-//				args.add(serverArgument);
-//				args.add(databaseArgument);
-//				args.add(ftSearchArgument);
-//				args.add(parentIdArgument);
-//				args.add(keyArgument);
-//				args.add(skipArgument);
-//				args.add(limitArgument);
-//				args.add(p0Argument);
-//				args.add(p1Argument);
-//				args.add(p2Argument);
-//				args.add(p3Argument);
+				View view = ctx.getDatabase(server,database).getView(viewName);
+				ViewNav viewNav = null;
+				
+				String key = getStringParameter(environment,keyArgument.getName());
+				if(StringUtil.isNotEmpty(key)) {
+					viewNav = new ViewNavKey(view, key);
+				}
+				if(viewNav==null) {
+					String keys = getStringParameter(environment,keysArgument.getName());
+					if(StringUtil.isNotEmpty(keys)) {
+						viewNav = new ViewNavKeys(view, keys);
+					}
+				}
+				if(viewNav==null) {
+					viewNav = new ViewNavAll(view);
+				}
+				
+				// Common nav parameters
+				viewNav.documents = documents();
+				viewNav.skip = getIntParameter(environment,skipArgument.getName());
+				viewNav.limit = Math.min(MAX_LIMIT,getIntParameter(environment,limitArgument.getName(),DEFAULT_LIMIT));
 				
 				return createAccessor(environment,viewNav);
 			} catch(Exception ex) {
 				throw new GraphQLException(StringUtil.format("Error while executing the JSON query, {0}",ex.getLocalizedMessage()),ex);
 			}
 		}
+		protected abstract boolean documents();
 		protected abstract Object createAccessor(final DataFetchingEnvironment environment, ViewNav nav) throws JsonException, NotesException;
 	};
 	
@@ -608,9 +674,13 @@ public class DominoGraphFactory extends GraphFactory {
 		public ViewEntryFetcher() {
 		}
 		@Override
+		protected boolean documents() {
+			return false;
+		}
+		@Override
 		protected Object createAccessor(final DataFetchingEnvironment environment, ViewNav nav) throws JsonException, NotesException {
 			nav.limit = 1; // Force it
-			List<ViewEntryAccessor> e = nav.entries(environment);
+			List<?> e = nav.browse(environment);
 			return !e.isEmpty() ? e.get(0) : null; 
 		}
 	};
@@ -618,8 +688,12 @@ public class DominoGraphFactory extends GraphFactory {
 		public ViewEntriesFetcher() {
 		}
 		@Override
+		protected boolean documents() {
+			return false;
+		}
+		@Override
 		protected Object createAccessor(final DataFetchingEnvironment environment, ViewNav nav) throws JsonException, NotesException {
-			return nav.entries(environment);
+			return nav.browse(environment);
 		}
 	};
 	
@@ -627,9 +701,13 @@ public class DominoGraphFactory extends GraphFactory {
 		public ViewDocumentFetcher() {
 		}
 		@Override
+		protected boolean documents() {
+			return true;
+		}
+		@Override
 		protected Object createAccessor(final DataFetchingEnvironment environment, ViewNav nav) throws JsonException, NotesException {
 			nav.limit = 1; // Force it
-			List<DocumentAccessor> e = nav.documents(environment);
+			List<?> e = nav.browse(environment);
 			return !e.isEmpty() ? e.get(0) : null; 
 		}
 	};
@@ -637,8 +715,12 @@ public class DominoGraphFactory extends GraphFactory {
 		public ViewDocumentsFetcher() {
 		}
 		@Override
+		protected boolean documents() {
+			return true;
+		}
+		@Override
 		protected Object createAccessor(final DataFetchingEnvironment environment, ViewNav nav) throws JsonException, NotesException {
-			return nav.documents(environment);
+			return nav.browse(environment);
 		}
 	};
 	
@@ -656,23 +738,32 @@ public class DominoGraphFactory extends GraphFactory {
 			.name("unid")
 			.type(GraphQLString)
 			.build(); 
-	public static GraphQLArgument idArgument = new GraphQLArgument.Builder()
-			.name("id")
+	public static GraphQLArgument noteIdArgument = new GraphQLArgument.Builder()
+			.name("noteId")
 			.type(GraphQLString)
 			.build(); 
 
+	// Document specific
+//	public static GraphQLArgument parentUnidArgument = new GraphQLArgument.Builder()
+//			.name("parentUnid")
+//			.type(GraphQLString)
+//			.build(); 
 
 	// View specific
+	public static GraphQLArgument nameArgument = new GraphQLArgument.Builder()
+			.name("name")
+			.type(GraphQLString)
+			.build(); 
 	public static GraphQLArgument ftSearchArgument = new GraphQLArgument.Builder()
 			.name("ftsearch")
 			.type(GraphQLString)
 			.build(); 
-	public static GraphQLArgument parentIdArgument = new GraphQLArgument.Builder()
-			.name("parentid")
-			.type(GraphQLString)
-			.build(); 
 	public static GraphQLArgument keyArgument = new GraphQLArgument.Builder()
 			.name("key")
+			.type(GraphQLString)
+			.build(); 
+	public static GraphQLArgument keysArgument = new GraphQLArgument.Builder()
+			.name("keys")
 			.type(GraphQLString)
 			.build(); 
 	public static GraphQLArgument skipArgument = new GraphQLArgument.Builder()
@@ -683,22 +774,4 @@ public class DominoGraphFactory extends GraphFactory {
 			.name("limit")
 			.type(GraphQLString)
 			.build(); 
-	
-	// Parameters
-	public static GraphQLArgument p0Argument = new GraphQLArgument.Builder()
-			.name("p0")
-			.type(GraphQLString)
-			.build(); 
-	public static GraphQLArgument p1Argument = new GraphQLArgument.Builder()
-			.name("p1")
-			.type(GraphQLString)
-			.build(); 
-	public static GraphQLArgument p2Argument = new GraphQLArgument.Builder()
-			.name("p2")
-			.type(GraphQLString)
-			.build(); 
-	public static GraphQLArgument p3Argument = new GraphQLArgument.Builder()
-			.name("p3")
-			.type(GraphQLString)
-			.build();
 }

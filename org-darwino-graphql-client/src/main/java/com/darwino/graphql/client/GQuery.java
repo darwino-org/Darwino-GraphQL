@@ -13,52 +13,25 @@
 
 package com.darwino.graphql.client;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 import com.darwino.commons.json.JsonException;
 
 /**
- * Base class for a GraphQL Entry.
+ * GraphQL Query Operation.
  * 
  * @author priand
  */
-public class GDirective extends GObject {
+public class GQuery extends GOperation<GQuery> {
 	
-	private String name;
-	private Map<String,Object> attributes;
+	public GQuery() {
+	}
+
+	public GQuery(String name) {
+		super(name);
+	}
 	
-	public GDirective() {
-	}
-
-	public GDirective(String name) {
-		name(name);
-	}
-
-	public GDirective name(String name) {
-		this.name = name;
-		return this;
-	}
-
-	public Map<String,Object> getAttributes() {
-		if(attributes==null) {
-			attributes = new LinkedHashMap<String, Object>();
-		}
-		return attributes;
-	}
-
-	public GDirective attribute(String name, Object value) {
-		getAttributes().put(name, value);
-		return this;
-	}
-
 	@Override
 	protected void buildQuery(Builder b, boolean compact) throws JsonException {
-		b.append(name);
-		if(attributes!=null && !attributes.isEmpty()) {
-			b.append("(");
-			b.emitObjectContent(attributes,compact);
-			b.append(")");
-		}
-	}
+		b.append("query ");
+		super.buildQuery(b, compact);
+	}	
 }

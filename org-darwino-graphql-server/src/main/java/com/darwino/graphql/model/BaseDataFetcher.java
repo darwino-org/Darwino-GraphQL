@@ -44,13 +44,27 @@ public abstract class BaseDataFetcher<T> implements DataFetcher {
 	}
     
 	protected String getStringParameter(DataFetchingEnvironment environment, String argName) throws JsonException {
-		return JsonUtil.asString(getParameter(environment, argName));
+		return getStringParameter(environment, argName, null);
 	}
+	protected String getStringParameter(DataFetchingEnvironment environment, String argName, String defaultValue) throws JsonException {
+		Object v = getParameter(environment, argName);
+		return v!=null ? JsonUtil.asString(v) : defaultValue;
+	}
+	
 	protected int getIntParameter(DataFetchingEnvironment environment, String argName) throws JsonException {
-		return JsonUtil.asInt(getParameter(environment, argName));
+		return getIntParameter(environment, argName, 0);
 	}
+	protected int getIntParameter(DataFetchingEnvironment environment, String argName, int defaultValue) throws JsonException {
+		Object v = getParameter(environment, argName);
+		return v!=null ? JsonUtil.asInt(v) : defaultValue;
+	}
+	
 	protected boolean getBooleanParameter(DataFetchingEnvironment environment, String argName) throws JsonException {
-		return JsonUtil.asBoolean(getParameter(environment, argName));
+		return getBooleanParameter(environment, argName, false);
+	}
+	protected boolean getBooleanParameter(DataFetchingEnvironment environment, String argName, boolean defaultValue) throws JsonException {
+		Object v = getParameter(environment, argName);
+		return v!=null ? JsonUtil.asBoolean(v) : defaultValue;
 	}
 	
 	private Object getParameter(DataFetchingEnvironment environment, String argName) throws JsonException {

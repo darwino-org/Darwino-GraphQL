@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.darwino.commons.json.JsonException;
-import com.darwino.commons.util.text.JavaTextUtil;
+import com.darwino.commons.util.text.JavaScriptUtil;
 import com.darwino.commons.util.text.TextBuilder;
 
 /**
@@ -33,25 +33,50 @@ public abstract class GObject {
 		}
 		
 		@SuppressWarnings("unchecked")
-		public void emitValue(Object value) {
+		public void emitValue(Object value, boolean compact) {
 			if(value instanceof Map<?,?>) {
 				append("{");
-				emitObjectContent((Map<String, Object>)value);
+				emitObjectContent((Map<String, Object>)value,compact);
 				append("}");
 			} else if(value instanceof List<?>) {
 				append("[");
-				emitArrayContent((List<Object>)value);
+				emitArrayContent((List<Object>)value,compact);
 				append("]");
 			} else if(value instanceof CharSequence) {
 				append('"');
-				append(JavaTextUtil.toJavaString(String.valueOf(value)));
+				escape((CharSequence)value);
 				append('"');
 			} else if(value instanceof Number) {
 				append(string((Number)value));
 			} else if(value instanceof Boolean) {
 				append(((Boolean)value).booleanValue() ? "true" : "false");
 			}
-		}	
+		}
+		private void escape(CharSequence s) {
+			// http://facebook.github.io/graphql/#sec-String-Value
+	        int length = s.length();
+	        for( int i=0; i<length; i++ ) {
+	            char c = s.charAt(i);
+	            switch(c) {
+	                case '\b':  append( "\\b" );  break;
+	                case '\t':  append( "\\t" );  break;
+	                case '\n':  append( "\\n" );  break;
+	                case '\f':  append( "\\f" );  break;
+	                case '\r':  append( "\\r" );  break;
+	                case '/':  append( "\\/" ); break;
+	                case '\"':  append( "\\\"" ); break;
+	                case '\\':  append( "\\\\" ); break;
+	                default : {
+	                    if((c<JavaScriptUtil.ASCII_MIN) || (c > JavaScriptUtil.ASCII_MAX)) {
+	                    	append( "\\u" );
+	                    	append( com.darwino.commons.util.StringUtil.toUnsignedHex(c,4) );
+	                    } else {
+	                    	append(c);
+	                    }
+	                }
+	            }
+	        }
+		}
 		private static String string(Number n) {
 			double d = n.doubleValue();
 			long l = (long)d;
@@ -62,7 +87,7 @@ public abstract class GObject {
 			}
 		}
 		
-		public void emitObjectContent(Map<String,Object> map) {
+		public void emitObjectContent(Map<String,Object> map, boolean compact) {
 			boolean first = true;
 			for(Map.Entry<String, Object> e: map.entrySet()) {
 				if(first) {
@@ -72,13 +97,16 @@ public abstract class GObject {
 				}
 				String name =  e.getKey();
 				append(name);
-				append(": ");
+				append(':');
+				if(!compact) {
+					append(' ');
+				}
 				Object value = e.getValue();
-				emitValue(value);
+				emitValue(value,compact);
 			}
 		}	
 		
-		public void emitArrayContent(List<Object> list) {
+		public void emitArrayContent(List<Object> list, boolean compact) {
 			boolean first = true;
 			for(Object value: list) {
 				if(first) {
@@ -86,7 +114,7 @@ public abstract class GObject {
 				} else {
 					append(",");
 				}
-				emitValue(value);
+				emitValue(value,compact);
 			}
 		}
 	}
@@ -95,10 +123,10 @@ public abstract class GObject {
 	public GObject() {
 	}
 	
-	public String createQuery() throws JsonException {
-		return createQuery(true);
+	public String build() throws JsonException {
+		return build(true);
 	}
-	public String createQuery(boolean compact) throws JsonException {
+	public String build(boolean compact) throws JsonException {
 		Builder b = new Builder();
 		buildQuery(b, compact);
 		return b.toString();

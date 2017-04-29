@@ -13,25 +13,17 @@
 
 package com.darwino.graphql.client;
 
-import com.darwino.commons.json.JsonException;
-
 /**
- * GraphQL Mutation Operation.
+ * GraphQL operation - Query & Mutation.
  * 
  * @author priand
  */
-public class GMutation extends GOperation<GMutation> {
+public abstract class GOperation<T extends GOperation<?>> extends GBaseField<T> {
 	
-	public GMutation() {
+	public GOperation() {
 	}
 
-	public GMutation(String name) {
+	public GOperation(String name) {
 		super(name);
 	}
-	
-	@Override
-	protected void buildQuery(Builder b, boolean compact) throws JsonException {
-		b.append("mutation ");
-		super.buildQuery(b, compact);
-	}	
 }
