@@ -768,10 +768,10 @@ public class DominoGraphFactory extends GraphFactory {
 			.build(); 
 	public static GraphQLArgument skipArgument = new GraphQLArgument.Builder()
 			.name("skip")
-			.type(GraphQLString)
+			.type(GraphQLInt)
 			.build(); 
 	public static GraphQLArgument limitArgument = new GraphQLArgument.Builder()
 			.name("limit")
-			.type(GraphQLString)
+			.type(GraphQLInt)
 			.build(); 
 }
