@@ -27,10 +27,6 @@ import com.darwino.commons.util.text.TextBuilder;
  */
 public abstract class GObject {
 	
-	public static final int ASCII_MIN = 32;
-	public static final int ASCII_MAX = 126;
-
-	
 	public static class Builder extends TextBuilder {
 		
 		public Builder() {
@@ -71,7 +67,7 @@ public abstract class GObject {
 	                case '\"':  append( "\\\"" ); break;
 	                case '\\':  append( "\\\\" ); break;
 	                default : {
-	                    if((c<ASCII_MIN) || (c > ASCII_MAX)) {
+	                    if((c<JavaScriptUtil.ASCII_MIN) || (c > JavaScriptUtil.ASCII_MAX)) {
 	                    	append( "\\u" );
 	                    	append( com.darwino.commons.util.StringUtil.toUnsignedHex(c,4) );
 	                    } else {
