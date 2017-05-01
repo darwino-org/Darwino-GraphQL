@@ -106,13 +106,23 @@ public abstract class GBaseField<T extends GBaseField<?>> extends GObject {
 		return (T)this;
 	}
 	@SuppressWarnings("unchecked")
+	public T booleanField(String alias, String jsonPath) {
+		getEntries().add(new GField(alias,"boolean").attribute("path", jsonPath));
+		return (T)this;
+	}
+	@SuppressWarnings("unchecked")
+	public T numberField(String alias, String jsonPath) {
+		getEntries().add(new GField(alias,"number").attribute("path", jsonPath));
+		return (T)this;
+	}
+	@SuppressWarnings("unchecked")
 	public T intField(String alias, String jsonPath) {
 		getEntries().add(new GField(alias,"int").attribute("path", jsonPath));
 		return (T)this;
 	}
 	@SuppressWarnings("unchecked")
-	public T booleanField(String alias, String jsonPath) {
-		getEntries().add(new GField(alias,"boolean").attribute("path", jsonPath));
+	public T longField(String alias, String jsonPath) {
+		getEntries().add(new GField(alias,"long").attribute("path", jsonPath));
 		return (T)this;
 	}
 	
