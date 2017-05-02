@@ -125,21 +125,21 @@ public class DominoGraphFactory extends GraphFactory {
 
 	public static enum SPECIAL_FIELD {
 	    // Common attributes names
-		UNID("unid"), //$NON-NLS-1$   
-		NOTEID("noteId"), //$NON-NLS-1$
+		UNID("_unid"), //$NON-NLS-1$   
+		NOTEID("_noteId"), //$NON-NLS-1$
         // View attributes names
-    	POSITION("position"), //$NON-NLS-1$
-    	READ("read"), //$NON-NLS-1$
-    	SIBLINGCOUNT("siblingCount"), //$NON-NLS-1$
-    	DESCENDANTCOUNT("descendantCount"), //$NON-NLS-1$
-    	CHILDCOUNT("childCount"), //$NON-NLS-1$
-    	INDENTLEVEL("indentLevel"), //$NON-NLS-1$
-    	ISCATEGORY("isCategory"), //$NON-NLS-1$
+    	POSITION("_position"), //$NON-NLS-1$
+    	READ("_read"), //$NON-NLS-1$
+    	SIBLINGCOUNT("_siblingCount"), //$NON-NLS-1$
+    	DESCENDANTCOUNT("_descendantCount"), //$NON-NLS-1$
+    	CHILDCOUNT("_childCount"), //$NON-NLS-1$
+    	INDENTLEVEL("_indentLevel"), //$NON-NLS-1$
+    	ISCATEGORY("_isCategory"), //$NON-NLS-1$
     	// Document attributes names
-    	PARENTUNID("parentUnid"), //$NON-NLS-1$
-    	CREATED("created"), //$NON-NLS-1$
-    	LASTMODIFIED("lastModified"), //$NON-NLS-1$
-    	LASTACCESSED("lastAccessed") //$NON-NLS-1$
+    	PARENTUNID("_parentUnid"), //$NON-NLS-1$
+    	CREATED("_created"), //$NON-NLS-1$
+    	LASTMODIFIED("_lastModified"), //$NON-NLS-1$
+    	LASTACCESSED("_lastAccessed") //$NON-NLS-1$
 		;
 		private String name;
 		private SPECIAL_FIELD(String name) {
